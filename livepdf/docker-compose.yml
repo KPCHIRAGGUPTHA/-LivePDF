@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: livepdf-postgres
+    environment:
+      POSTGRES_DB: livepdf
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - livepdf-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: livepdf-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - livepdf-network
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: livepdf-api
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=livepdf
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=d7a5b3c4e2f189a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4
+      - CLIENT_URL=http://localhost:5173
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - livepdf-network
+
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: livepdf-worker
+    command: node worker.js
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=livepdf
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - livepdf-network
+
+  python-diff:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    container_name: livepdf-python-diff
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+    networks:
+      - livepdf-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: livepdf-client
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    networks:
+      - livepdf-network
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  livepdf-network:
+    driver: bridge

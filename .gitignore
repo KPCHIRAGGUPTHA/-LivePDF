@@ -1,0 +1,27 @@
+# Node dependency directories
+**/node_modules/
+**/dist/
+**/build/
+
+# Local environment variables and secrets
+.env
+server/.env
+client/.env
+python/.env
+
+# Python virtual environment and cache files
+**/venv/
+**/.venv/
+**/__pycache__/
+*.pyc
+
+# Local uploads directories
+server/uploads/
+
+# IDE config files
+.vscode/
+.idea/
+
+# Operating System files
+.DS_Store
+Thumbs.db
