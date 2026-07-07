@@ -27,7 +27,7 @@ services:
       - livepdf-network-prod
 
   api:
-    image: ${API_IMAGE:-livepdf-server:latest}
+    image: ${API_IMAGE:-kpchiragguptha/livepdf-server:latest}
     container_name: livepdf-api-prod
     ports:
       - "5000:5000"
@@ -54,7 +54,7 @@ services:
       - livepdf-network-prod
 
   worker:
-    image: ${API_IMAGE:-livepdf-server:latest}
+    image: ${API_IMAGE:-kpchiragguptha/livepdf-server:latest}
     container_name: livepdf-worker-prod
     command: node worker.js
     environment:
@@ -76,7 +76,7 @@ services:
       - livepdf-network-prod
 
   python-diff:
-    image: ${PYTHON_IMAGE:-livepdf-python:latest}
+    image: ${PYTHON_IMAGE:-kpchiragguptha/livepdf-python:latest}
     container_name: livepdf-python-diff-prod
     environment:
       - PORT=8001
@@ -85,7 +85,7 @@ services:
       - livepdf-network-prod
 
   client:
-    image: ${CLIENT_IMAGE:-livepdf-client:latest}
+    image: ${CLIENT_IMAGE:-kpchiragguptha/livepdf-client:latest}
     container_name: livepdf-client-prod
     ports:
       - "80:80"
