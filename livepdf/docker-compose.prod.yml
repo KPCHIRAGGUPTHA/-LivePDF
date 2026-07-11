@@ -41,7 +41,7 @@ services:
       - DB_PASSWORD_FILE=/run/secrets/db_password
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
-      - CLIENT_URL=https://yourdomain.com
+      - CLIENT_URL=${CLIENT_URL:-http://54.87.199.110}
     secrets:
       - db_user
       - db_password
@@ -52,6 +52,8 @@ services:
     restart: always
     networks:
       - livepdf-network-prod
+    volumes:
+      - uploads-data:/app/uploads
 
   worker:
     image: ${API_IMAGE:-kpchiragguptha/livepdf-server:latest}
@@ -74,6 +76,8 @@ services:
     restart: always
     networks:
       - livepdf-network-prod
+    volumes:
+      - uploads-data:/app/uploads
 
   python-diff:
     image: ${PYTHON_IMAGE:-kpchiragguptha/livepdf-python:latest}
@@ -96,6 +100,7 @@ services:
 volumes:
   pgdata-prod:
   redisdata-prod:
+  uploads-data:
 
 secrets:
   db_user:
