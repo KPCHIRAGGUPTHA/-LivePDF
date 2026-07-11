@@ -1,4 +1,18 @@
 require('dotenv').config();
+
+// Load file-based secrets (Docker Secrets) into standard environment variables
+const fs = require('fs');
+['DB_USER', 'DB_PASSWORD', 'JWT_SECRET'].forEach((key) => {
+  const fileKey = `${key}_FILE`;
+  if (process.env[fileKey] && fs.existsSync(process.env[fileKey])) {
+    try {
+      process.env[key] = fs.readFileSync(process.env[fileKey], 'utf8').trim();
+    } catch (err) {
+      console.error(`Error reading secret from ${process.env[fileKey]}:`, err);
+    }
+  }
+});
+
 const http = require('http');
 const express = require('express');
 const { initSocket } = require('./socket');
@@ -16,6 +30,8 @@ const apiKeyAuth = require('./middleware/apiKeyAuth');
 const apiKeyRateLimiter = require('./middleware/rateLimiter');
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Nginx) for rate-limiting client IPs
+
 
 // ─── Sentry Initialization ─────────────────────────────────────
 if (process.env.SENTRY_DSN) {
