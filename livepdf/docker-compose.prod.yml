@@ -86,6 +86,8 @@ services:
     environment:
       - PORT=8001
     restart: always
+    volumes:
+      - uploads-data:/server/uploads
     networks:
       - livepdf-network-prod
 
