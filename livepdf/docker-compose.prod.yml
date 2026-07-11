@@ -42,6 +42,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
       - CLIENT_URL=${CLIENT_URL:-http://54.87.199.110}
+      - DIFF_SERVICE_URL=http://python-diff:8001
     secrets:
       - db_user
       - db_password
