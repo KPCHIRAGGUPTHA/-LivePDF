@@ -12,6 +12,15 @@ export default function Viewer() {
   const { token } = useParams();
   const navigate = useNavigate();
   const [state, setState] = useState('loading'); // loading | pdf | password | error
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Versions and URL states
   const [pdfUrlA, setPdfUrlA] = useState(null);
@@ -220,16 +229,33 @@ export default function Viewer() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
+      <div style={{
+        ...styles.header,
+        height: isMobile ? 'auto' : 52,
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center',
+        paddingBottom: isMobile ? 8 : 0,
+        paddingTop: isMobile ? 8 : 0,
+        gap: isMobile ? 8 : 12,
+      }}>
+        <div style={{
+          ...styles.headerLeft,
+          justifyContent: isMobile ? 'space-between' : 'flex-start',
+        }}>
           <span style={styles.title}>{title}</span>
-          <ConnectionStatus connected={connected} reconnecting={reconnecting} />
-          {viewerCount > 1 && (
-            <span style={styles.viewerCount}>({viewerCount} viewing)</span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <ConnectionStatus connected={connected} reconnecting={reconnecting} />
+            {viewerCount > 1 && (
+              <span style={styles.viewerCount}>({viewerCount} viewing)</span>
+            )}
+          </div>
         </div>
         
-        <div style={styles.headerRight}>
+        <div style={{
+          ...styles.headerRight,
+          justifyContent: isMobile ? 'space-between' : 'flex-end',
+          width: isMobile ? '100%' : 'auto',
+        }}>
           {versions.length > 1 && (
             <button 
               onClick={toggleCompareMode} 
@@ -263,8 +289,16 @@ export default function Viewer() {
       </div>
 
       {compareMode ? (
-        <div style={styles.compareContainer}>
-          <div style={styles.comparePane}>
+        <div style={{
+          ...styles.compareContainer,
+          flexDirection: isMobile ? 'column' : 'row',
+          overflow: isMobile ? 'auto' : 'hidden',
+        }}>
+          <div style={{
+            ...styles.comparePane,
+            flex: isMobile ? 'none' : 1,
+            height: isMobile ? '500px' : 'auto',
+          }}>
             <div style={styles.paneHeader}>
               <div style={styles.paneInfo}>
                 <span style={styles.paneLabel}>Version A:</span>
@@ -292,11 +326,16 @@ export default function Viewer() {
                 socket={socket}
                 initialDiff={activeDiff}
                 token={token}
+                isMobile={isMobile}
               />
             )}
           </div>
 
-          <div style={styles.comparePane}>
+          <div style={{
+            ...styles.comparePane,
+            flex: isMobile ? 'none' : 1,
+            height: isMobile ? '500px' : 'auto',
+          }}>
             <div style={styles.paneHeader}>
               <div style={styles.paneInfo}>
                 <span style={styles.paneLabel}>Version B:</span>
@@ -321,6 +360,7 @@ export default function Viewer() {
                 allowDownload={allowDownload}
                 onRetry={handleRetryB}
                 token={token}
+                isMobile={isMobile}
               />
             )}
           </div>
@@ -335,6 +375,7 @@ export default function Viewer() {
           socket={socket}
           initialDiff={activeDiff}
           token={token}
+          isMobile={isMobile}
         />
       )}
       <ViewerToast

@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 // Import react-pdf styles for correct text-layer absolute positioning and overlay
 import 'react-pdf/dist/Page/TextLayer.css';
 
-export default function PdfViewer({ url, title, allowDownload, showWatermark, onRetry, socket, initialDiff, token }) {
+export default function PdfViewer({ url, title, allowDownload, showWatermark, onRetry, socket, initialDiff, token, isMobile }) {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
