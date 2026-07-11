@@ -2,8 +2,10 @@ module.exports = {
   apps: [
     {
       name: "livepdf-docker-stack",
-      script: "docker-compose",
-      args: "-f docker-compose.prod.yml up --build",
+      script: "docker",
+      args: "compose -f docker-compose.prod.yml up",
+      exec_mode: "fork",
+      interpreter: "none",
       autorestart: true,
       watch: false,
       max_restarts: 5,
