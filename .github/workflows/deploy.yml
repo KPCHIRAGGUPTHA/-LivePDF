@@ -15,7 +15,7 @@ jobs:
           node-version: '20'
       - name: Run Backend Tests
         run: |
-          cd server
+          cd livepdf/server
           npm ci
           # If tests exist, run them. Fallback to compile check if test script is empty.
           npm test || echo "Tests passed or bypassed"
@@ -38,21 +38,21 @@ jobs:
       - name: Build and Push Server Image
         uses: docker/build-push-action@v5
         with:
-          context: ./server
+          context: ./livepdf/server
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/livepdf-server:latest
 
       - name: Build and Push Client Image
         uses: docker/build-push-action@v5
         with:
-          context: ./client
+          context: ./livepdf/client
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/livepdf-client:latest
 
       - name: Build and Push Python Image
         uses: docker/build-push-action@v5
         with:
-          context: ./python
+          context: ./livepdf/python
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/livepdf-python:latest
 
