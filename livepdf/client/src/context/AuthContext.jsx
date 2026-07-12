@@ -71,8 +71,26 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  const forgotPassword = useCallback(async (email) => {
+    try {
+      const res = await api.post('/auth/forgot-password', { email });
+      return { success: true, message: res.data.message };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || 'Failed to request password reset' };
+    }
+  }, []);
+
+  const resetPassword = useCallback(async (token, newPassword) => {
+    try {
+      const res = await api.post('/auth/reset-password', { token, newPassword });
+      return { success: true, message: res.data.message };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || 'Failed to reset password' };
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, signup, login, logout, verifyEmail, resendOtp }}>
+    <AuthContext.Provider value={{ user, loading, signup, login, logout, verifyEmail, resendOtp, forgotPassword, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

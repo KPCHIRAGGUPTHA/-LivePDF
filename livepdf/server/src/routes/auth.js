@@ -28,6 +28,8 @@ router.post('/signup', signupValidation, authController.signup);
 router.post('/login', loginValidation, authController.login);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/resend-otp', authController.resendOtp);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
 router.get('/me', authMiddleware, authController.getMe);
 
 module.exports = router;
