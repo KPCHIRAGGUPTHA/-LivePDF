@@ -64,6 +64,17 @@ export default function PdfViewer({ url, title, allowDownload, showWatermark, on
     return () => observer.disconnect();
   }, []);
 
+  // Auto-fit to width on load or container resize
+  useEffect(() => {
+    if (status === 'success' && containerWidth) {
+      const PAGE_NATIVE_WIDTH = 612;
+      const padding = (isMobileProp || (containerWidth && containerWidth < 480)) ? 16 : 40;
+      const availableWidth = containerWidth - padding;
+      const minScale = (isMobileProp || (containerWidth && containerWidth < 480)) ? 0.3 : 0.5;
+      setScale(Math.max(minScale, Math.min(2.0, availableWidth / PAGE_NATIVE_WIDTH)));
+    }
+  }, [status, containerWidth]);
+
   // Jump to active search match's page and scroll to it
   useEffect(() => {
     if (matches.length > 0 && matches[currentMatch]) {

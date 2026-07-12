@@ -349,7 +349,7 @@ export default function Dashboard() {
   return (
     <div style={styles.page}>
       {/* Header bar */}
-      <header style={styles.header}>
+      <header className="responsive-header" style={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <span style={styles.logo}>📄 LivePDF</span>
           <div style={styles.headerDivider}></div>
@@ -379,14 +379,14 @@ export default function Dashboard() {
 
         <div style={styles.headerRight}>
           <NotificationBell />
-          <span style={styles.name}>{user?.fullName}</span>
+          <span className="responsive-name" style={styles.name}>{user?.fullName}</span>
           <span style={styles.planBadge}>{userPlan}</span>
           <button onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
         </div>
       </header>
 
       {/* Main body area */}
-      <div style={styles.body}>
+      <div className="responsive-body" style={styles.body}>
         {activeTab === 'documents' ? (
           <>
             {/* Header info */}

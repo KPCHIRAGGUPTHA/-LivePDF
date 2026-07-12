@@ -8,6 +8,58 @@
       *, *::before, *::after { box-sizing: border-box; }
       body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
       input, button, select, textarea { font-family: inherit; }
+
+      @media (max-width: 768px) {
+        .responsive-header {
+          flex-wrap: wrap !important;
+          height: auto !important;
+          min-height: 56px !important;
+          padding: 8px 1rem !important;
+          gap: 8px !important;
+        }
+        .responsive-name {
+          display: none !important;
+        }
+        .responsive-body {
+          padding: 1.5rem 1rem !important;
+        }
+        .responsive-card-actions {
+          flex-wrap: wrap !important;
+          gap: 8px !important;
+        }
+        .responsive-card-btn {
+          flex: 1 1 calc(50% - 4px) !important;
+          padding: 8px 6px !important;
+        }
+        .responsive-card-btn-delete {
+          flex: 1 1 100% !important;
+          margin-top: 4px !important;
+        }
+        .responsive-toolbar {
+          padding: 8px 12px !important;
+          gap: 8px !important;
+        }
+        .responsive-toolbar-title {
+          display: none !important;
+        }
+        .responsive-toolbar-divider {
+          display: none !important;
+        }
+        .responsive-toolbar-controls {
+          gap: 8px !important;
+          justify-content: space-between !important;
+        }
+        .responsive-toolbar-group {
+          margin: 0 !important;
+        }
+        .responsive-search-wrap {
+          flex: 1 1 100% !important;
+          margin: 4px 0 !important;
+        }
+        .responsive-search-input-wrapper {
+          width: 100% !important;
+        }
+      }
     </style>
   </head>
   <body>

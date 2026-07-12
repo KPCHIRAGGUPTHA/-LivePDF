@@ -93,13 +93,13 @@ export default function PdfToolbar({
   };
 
   return (
-    <div style={styles.toolbar}>
+    <div className="responsive-toolbar" style={styles.toolbar}>
       {/* Title */}
-      <span style={styles.title} title={title}>{title || 'Document'}</span>
+      <span className="responsive-toolbar-title" style={styles.title} title={title}>{title || 'Document'}</span>
 
-      <div style={styles.controlsGroup}>
+      <div className="responsive-toolbar-controls" style={styles.controlsGroup}>
         {/* Navigation Group */}
-        <div style={styles.group}>
+        <div className="responsive-toolbar-group" style={styles.group}>
           <button
             style={{
               ...styles.btn,
@@ -140,10 +140,10 @@ export default function PdfToolbar({
           </button>
         </div>
 
-        <div style={styles.divider} />
+        <div className="responsive-toolbar-divider" style={styles.divider} />
 
         {/* Zoom Group */}
-        <div style={styles.group}>
+        <div className="responsive-toolbar-group" style={styles.group}>
           <button
             style={{
               ...styles.btn,
@@ -189,10 +189,10 @@ export default function PdfToolbar({
           )}
         </div>
 
-        <div style={styles.divider} />
+        <div className="responsive-toolbar-divider" style={styles.divider} />
 
         {/* Layout Toggle Group */}
-        <div style={styles.group}>
+        <div className="responsive-toolbar-group" style={styles.group}>
           <button
             style={{
               ...styles.btnSmall,
@@ -209,7 +209,7 @@ export default function PdfToolbar({
           </button>
         </div>
 
-        <div style={styles.divider} />
+        <div className="responsive-toolbar-divider" style={styles.divider} />
 
         {/* Search Component */}
         <SearchBar
@@ -222,7 +222,7 @@ export default function PdfToolbar({
         />
 
         {/* Action Group */}
-        <div style={{ ...styles.group, marginLeft: 'auto' }}>
+        <div className="responsive-toolbar-group" style={{ ...styles.group, marginLeft: 'auto' }}>
           {diffReady && (
             <button
               style={{

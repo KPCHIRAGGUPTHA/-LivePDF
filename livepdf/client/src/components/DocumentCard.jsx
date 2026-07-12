@@ -88,8 +88,9 @@ export default function DocumentCard({ doc, onReplace, onDelete, onShare, onHist
         <span style={styles.metaItem}>{timeAgo(doc.uploaded_at)}</span>
       </div>
 
-      <div style={styles.actions}>
+      <div className="responsive-card-actions" style={styles.actions}>
         <button
+          className="responsive-card-btn"
           style={{ ...styles.btn, ...(isPreviewHovered ? styles.btnPreviewHover : {}) }}
           onMouseEnter={() => setIsPreviewHovered(true)}
           onMouseLeave={() => setIsPreviewHovered(false)}
@@ -99,6 +100,7 @@ export default function DocumentCard({ doc, onReplace, onDelete, onShare, onHist
           👁️ {previewLoading ? '...' : 'Preview'}
         </button>
         <button
+          className="responsive-card-btn"
           style={{ ...styles.btn, ...(isShareHovered ? styles.btnShareHover : {}) }}
           onMouseEnter={() => setIsShareHovered(true)}
           onMouseLeave={() => setIsShareHovered(false)}
@@ -107,6 +109,7 @@ export default function DocumentCard({ doc, onReplace, onDelete, onShare, onHist
           🔗 Share
         </button>
         <button
+          className="responsive-card-btn"
           style={{ ...styles.btn, ...(isReplaceHovered ? styles.btnReplaceHover : {}) }}
           onMouseEnter={() => setIsReplaceHovered(true)}
           onMouseLeave={() => setIsReplaceHovered(false)}
@@ -115,6 +118,7 @@ export default function DocumentCard({ doc, onReplace, onDelete, onShare, onHist
           🔄 Replace
         </button>
         <button
+          className="responsive-card-btn"
           style={{ ...styles.btn, ...(isHistoryHovered ? styles.btnHistoryHover : {}) }}
           onMouseEnter={() => setIsHistoryHovered(true)}
           onMouseLeave={() => setIsHistoryHovered(false)}
@@ -123,6 +127,7 @@ export default function DocumentCard({ doc, onReplace, onDelete, onShare, onHist
           🕒 History
         </button>
         <button
+          className="responsive-card-btn responsive-card-btn-delete"
           style={{ ...styles.btn, ...styles.btnDelete, ...(isDeleteHovered ? styles.btnDeleteHover : {}) }}
           onMouseEnter={() => setIsDeleteHovered(true)}
           onMouseLeave={() => setIsDeleteHovered(false)}

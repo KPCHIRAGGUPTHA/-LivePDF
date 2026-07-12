@@ -6,8 +6,8 @@ export default function SearchBar({ query, onChange, matchCount, currentIndex, o
   const [nextHover, setNextHover] = useState(false);
 
   return (
-    <div style={styles.wrap}>
-      <div style={{
+    <div className="responsive-search-wrap" style={styles.wrap}>
+      <div className="responsive-search-input-wrapper" style={{
         ...styles.inputWrapper,
         borderColor: isFocused ? '#1a1a1a' : '#d0d0d0',
         boxShadow: isFocused ? '0 0 0 2px rgba(26, 26, 26, 0.1)' : 'none'
