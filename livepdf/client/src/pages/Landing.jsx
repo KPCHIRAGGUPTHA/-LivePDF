@@ -159,6 +159,11 @@ export default function Landing() {
             <a href="#pricing" style={styles.footerLinkItem}>Pricing</a>
           </div>
           <div style={styles.footerCol}>
+            <span style={styles.footerColTitle}>Legal</span>
+            <span onClick={() => navigate('/terms')} style={{ ...styles.footerLinkItem, cursor: 'pointer' }}>Terms of Service</span>
+            <span onClick={() => navigate('/privacy')} style={{ ...styles.footerLinkItem, cursor: 'pointer' }}>Privacy Policy</span>
+          </div>
+          <div style={styles.footerCol}>
             <span style={styles.footerColTitle}>Support</span>
             <a href="mailto:support@livepdf.in" style={styles.footerLinkItem}>Contact Us</a>
             <span style={styles.footerLinkItem}>Status: Up</span>
