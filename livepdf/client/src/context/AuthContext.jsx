@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const res = await api.post('/auth/signup', { email, password, fullName });
-      return { success: true, userId: res.data.userId };
+      return { success: true, userId: res.data.userId, otpMock: res.data.otpMock };
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Signup failed' };
     } finally {
@@ -38,8 +38,8 @@ export function AuthProvider({ children }) {
 
   const resendOtp = useCallback(async (userId) => {
     try {
-      await api.post('/auth/resend-otp', { userId });
-      return { success: true };
+      const res = await api.post('/auth/resend-otp', { userId });
+      return { success: true, otpMock: res.data.otpMock };
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Failed to resend' };
     }
@@ -59,6 +59,7 @@ export function AuthProvider({ children }) {
         error: data?.error || 'Login failed',
         requiresVerification: data?.requiresVerification,
         userId: data?.userId,
+        otpMock: data?.otpMock,
       };
     } finally {
       setLoading(false);

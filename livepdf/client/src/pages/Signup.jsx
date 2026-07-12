@@ -22,7 +22,7 @@ export default function Signup() {
     }
     const result = await signup(form.email, form.password, form.fullName);
     if (result.success) {
-      navigate('/verify-email', { state: { userId: result.userId, email: form.email } });
+      navigate('/verify-email', { state: { userId: result.userId, email: form.email, otpMock: result.otpMock } });
     } else {
       setError(result.error);
     }

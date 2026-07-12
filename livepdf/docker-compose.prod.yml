@@ -43,6 +43,10 @@ services:
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
       - CLIENT_URL=${CLIENT_URL:-http://54.87.199.110}
       - DIFF_SERVICE_URL=http://python-diff:8001
+      - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
     secrets:
       - db_user
       - db_password
@@ -68,6 +72,10 @@ services:
       - DB_USER_FILE=/run/secrets/db_user
       - DB_PASSWORD_FILE=/run/secrets/db_password
       - REDIS_URL=redis://redis:6379
+      - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
     secrets:
       - db_user
       - db_password

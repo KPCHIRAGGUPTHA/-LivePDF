@@ -28,7 +28,7 @@ export default function Login() {
         navigate('/dashboard');
       }
     } else if (result.requiresVerification) {
-      navigate('/verify-email', { state: { userId: result.userId, email: form.email } });
+      navigate('/verify-email', { state: { userId: result.userId, email: form.email, otpMock: result.otpMock } });
     } else {
       setError(result.error);
     }

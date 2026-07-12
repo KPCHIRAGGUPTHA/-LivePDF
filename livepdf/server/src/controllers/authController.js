@@ -53,10 +53,16 @@ async function signup(req, res) {
     // Send OTP email (don't await — let it run in background)
     sendVerificationEmail(user.email, fullName, otp).catch(console.error);
 
-    res.status(201).json({
+    const responsePayload = {
       message: 'Account created. Check your email for the verification code.',
       userId: user.id,
-    });
+    };
+
+    if (process.env.NODE_ENV === 'development' || process.env.EMAIL_USER === 'dummy_livepdf_email@gmail.com') {
+      responsePayload.otpMock = otp;
+    }
+
+    res.status(201).json(responsePayload);
   } catch (err) {
     console.error('Signup error:', err);
     res.status(500).json({ error: 'Server error during signup' });
@@ -142,7 +148,12 @@ async function resendOtp(req, res) {
 
     sendVerificationEmail(user.email, user.full_name, otp).catch(console.error);
 
-    res.json({ message: 'New OTP sent to your email.' });
+    const responsePayload = { message: 'New OTP sent to your email.' };
+    if (process.env.NODE_ENV === 'development' || process.env.EMAIL_USER === 'dummy_livepdf_email@gmail.com') {
+      responsePayload.otpMock = otp;
+    }
+
+    res.json(responsePayload);
   } catch (err) {
     console.error('Resend OTP error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -176,11 +187,15 @@ async function login(req, res) {
     }
 
     if (!user.is_verified) {
-      return res.status(403).json({
+      const responsePayload = {
         error: 'Email not verified',
         userId: user.id,
         requiresVerification: true,
-      });
+      };
+      if (process.env.NODE_ENV === 'development' || process.env.EMAIL_USER === 'dummy_livepdf_email@gmail.com') {
+        responsePayload.otpMock = user.otp_code;
+      }
+      return res.status(403).json(responsePayload);
     }
 
     const token = signToken(user);

@@ -7,10 +7,11 @@ export default function VerifyEmail() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { userId, email } = location.state || {};
+  const { userId, email, otpMock: initialOtpMock } = location.state || {};
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [resent, setResent] = useState(false);
+  const [otpMock, setOtpMock] = useState(initialOtpMock || '');
 
   if (!userId) {
     navigate('/signup');
@@ -32,6 +33,9 @@ export default function VerifyEmail() {
     const result = await resendOtp(userId);
     if (result.success) {
       setResent(true);
+      if (result.otpMock) {
+        setOtpMock(result.otpMock);
+      }
       setTimeout(() => setResent(false), 5000);
     } else {
       setError(result.error);
@@ -47,6 +51,22 @@ export default function VerifyEmail() {
           We sent a 6-digit code to <strong>{email}</strong>.
           Enter it below to verify your account.
         </p>
+
+        {otpMock && (
+          <div style={{
+            background: '#fef3c7',
+            border: '0.5px solid #fcd34d',
+            borderRadius: 8,
+            padding: '10px 12px',
+            fontSize: 13,
+            color: '#b45309',
+            marginBottom: 16,
+            textAlign: 'center',
+            fontWeight: 500
+          }}>
+            🧪 [Dev Mode] Mock OTP Code: <strong>{otpMock}</strong>
+          </div>
+        )}
 
         {error && <div style={styles.errorBox}>{error}</div>}
         {resent && <div style={styles.successBox}>New code sent to your email.</div>}
