@@ -74,7 +74,7 @@ export function AuthProvider({ children }) {
   const forgotPassword = useCallback(async (email) => {
     try {
       const res = await api.post('/auth/forgot-password', { email });
-      return { success: true, message: res.data.message };
+      return { success: true, message: res.data.message, resetLinkMock: res.data.resetLinkMock };
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Failed to request password reset' };
     }

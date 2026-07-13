@@ -8,11 +8,13 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [resetLinkMock, setResetLinkMock] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
+    setResetLinkMock('');
     setLoading(true);
 
     const result = await forgotPassword(email);
@@ -20,6 +22,9 @@ export default function ForgotPassword() {
 
     if (result.success) {
       setMessage(result.message || 'If that email exists, a reset link was sent.');
+      if (result.resetLinkMock) {
+        setResetLinkMock(result.resetLinkMock);
+      }
     } else {
       setError(result.error);
     }
@@ -33,6 +38,23 @@ export default function ForgotPassword() {
 
         {error && <div style={styles.errorBox}>{error}</div>}
         {message && <div style={styles.successBox}>{message}</div>}
+
+        {resetLinkMock && (
+          <div style={{
+            background: '#fef3c7',
+            border: '0.5px solid #fcd34d',
+            borderRadius: 8,
+            padding: '10px 12px',
+            fontSize: 13,
+            color: '#b45309',
+            marginBottom: 16,
+            textAlign: 'center',
+            fontWeight: 500
+          }}>
+            🧪 [Dev Mode] Mock Reset Link:<br/>
+            <a href={resetLinkMock} style={{ color: '#b45309', textDecoration: 'underline', fontWeight: 600 }}>Click here to reset your password</a>
+          </div>
+        )}
 
         {!message && (
           <form onSubmit={handleSubmit} style={styles.form}>

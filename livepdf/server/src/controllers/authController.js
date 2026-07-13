@@ -271,7 +271,13 @@ async function forgotPassword(req, res) {
 
     sendResetPasswordEmail(user.email, user.full_name, resetToken).catch(console.error);
 
-    res.json({ message: 'If that email exists, a reset link was sent.' });
+    const responsePayload = { message: 'If that email exists, a reset link was sent.' };
+    if (process.env.NODE_ENV === 'development' || process.env.EMAIL_USER === 'dummy_livepdf_email@gmail.com') {
+      const resetLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+      responsePayload.resetLinkMock = resetLink;
+    }
+
+    res.json(responsePayload);
   } catch (err) {
     console.error('Forgot password error:', err);
     res.status(500).json({ error: 'Server error' });

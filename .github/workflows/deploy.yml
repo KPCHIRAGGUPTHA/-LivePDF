@@ -70,4 +70,6 @@ jobs:
             cd /home/ubuntu/livepdf
             docker compose -f docker-compose.prod.yml pull
             pm2 restart livepdf-docker-stack
+            sleep 5
+            docker exec livepdf-api-prod node migrations/run_patches.js
 

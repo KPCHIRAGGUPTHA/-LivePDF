@@ -47,6 +47,7 @@ services:
       - EMAIL_PORT=${EMAIL_PORT:-587}
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASS=${EMAIL_PASS}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
     depends_on:
       - postgres
       - redis
@@ -71,6 +72,7 @@ services:
       - EMAIL_PORT=${EMAIL_PORT:-587}
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASS=${EMAIL_PASS}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
     depends_on:
       - postgres
       - redis

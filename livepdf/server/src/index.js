@@ -1,4 +1,13 @@
 require('dotenv').config();
+const Sentry = require('@sentry/node');
+
+// ─── Sentry Initialization ─────────────────────────────────────
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    tracesSampleRate: 0.1,
+  });
+}
 
 // Load file-based secrets (Docker Secrets) into standard environment variables
 const fs = require('fs');
@@ -19,7 +28,6 @@ const { initSocket } = require('./socket');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const Sentry = require('@sentry/node');
 
 const authRoutes = require('./routes/auth');
 const stripeRoutes = require('./routes/stripe');
@@ -33,14 +41,7 @@ const app = express();
 app.set('trust proxy', 1); // Trust first proxy (Nginx) for rate-limiting client IPs
 
 
-// ─── Sentry Initialization ─────────────────────────────────────
-if (process.env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    tracesSampleRate: 0.1,
-  });
-  app.use(Sentry.Handlers.requestHandler());
-}
+
 
 // ─── Security middleware ──────────────────────────────────────
 app.use(helmet());
@@ -103,7 +104,7 @@ app.get('/health', (req, res) => {
 
 // Sentry Error Handler
 if (process.env.SENTRY_DSN) {
-  app.use(Sentry.Handlers.errorHandler());
+  Sentry.setupExpressErrorHandler(app);
 }
 
 // 404 handler
