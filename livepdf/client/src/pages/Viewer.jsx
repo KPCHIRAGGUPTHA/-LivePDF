@@ -7,6 +7,9 @@ import useSocket from '../hooks/useSocket';
 import useSignedUrlRefresh from '../hooks/useSignedUrlRefresh';
 import ConnectionStatus from '../components/ConnectionStatus';
 import ViewerToast from '../components/ViewerToast';
+import ReviewBanner from '../components/ReviewBanner';
+import CommentPanel from '../components/CommentPanel';
+import { useAuth } from '../context/AuthContext';
 
 export default function Viewer() {
   const { token } = useParams();
@@ -33,6 +36,20 @@ export default function Viewer() {
   const [loadingA, setLoadingA] = useState(false);
   const [loadingB, setLoadingB] = useState(false);
   const [activeDiff, setActiveDiff] = useState(null);
+
+  const { user: currentUser } = useAuth();
+
+  // Phase 10 Collaboration & Approval States
+  const [allowComments, setAllowComments] = useState(true);
+  const [approvalStatus, setApprovalStatus] = useState('Draft');
+  const [approvalHistory, setApprovalHistory] = useState([]);
+  const [activeThreads, setActiveThreads] = useState([]);
+  const [previousThreads, setPreviousThreads] = useState([]);
+  const [allComments, setAllComments] = useState([]);
+  const [activeCommentId, setActiveCommentId] = useState(null);
+  const [showCommentPanel, setShowCommentPanel] = useState(false);
+  const [showResolved, setShowResolved] = useState(false);
+  const [mentionCandidates, setMentionCandidates] = useState([]);
 
   const [title, setTitle] = useState('');
   const [allowDownload, setAllowDownload] = useState(false);
@@ -86,6 +103,8 @@ export default function Viewer() {
         setAllowDownload(res.data.allowDownload);
         setShowWatermark(res.data.showWatermark || false);
         setVersions(res.data.versions || []);
+        setAllowComments(res.data.allowComments ?? true);
+        setApprovalStatus(res.data.approvalStatus || 'Draft');
         setDocId(res.data.documentId);
         setVersionNumber(res.data.versionNumber);
         setLinkType(res.data.linkType || 'public');
@@ -96,7 +115,10 @@ export default function Viewer() {
         setState('pdf');
       } catch (err) {
         const data = err.response?.data;
-        if (data?.requiresPassword) {
+        if (data?.isUnderReview) {
+          setState('error');
+          setErrorMsg('This document is currently under review and is not publicly accessible.');
+        } else if (data?.requiresPassword) {
           setTitle(data.title);
           setAllowDownload(data.allowDownload);
           setShowWatermark(data.showWatermark || false);
@@ -183,6 +205,122 @@ export default function Viewer() {
     onDocUpdated: handleDocUpdated,
   });
 
+  const fetchComments = useCallback(async (dId) => {
+    if (!dId) return;
+    try {
+      const res = await api.get(`/documents/${dId}/comments`, { skipAuthRedirect: true });
+      setActiveThreads(res.data.activeThreads || []);
+      setPreviousThreads(res.data.previousThreads || []);
+      
+      const activeList = (res.data.activeThreads || []).flatMap(t => [t, ...(t.replies || [])]);
+      const prevList = (res.data.previousThreads || []).flatMap(t => [t, ...(t.replies || [])]);
+      setAllComments([...activeList, ...prevList]);
+    } catch (err) {
+      console.error('Failed to load comments:', err);
+    }
+  }, []);
+
+  const fetchApprovalHistory = useCallback(async (dId) => {
+    if (!dId) return;
+    try {
+      const res = await api.get(`/documents/${dId}/approval/history`, { skipAuthRedirect: true });
+      setApprovalStatus(res.data.approvalStatus || 'Draft');
+      setApprovalHistory(res.data.rounds || []);
+    } catch (err) {
+      console.error('Failed to load approval history:', err);
+    }
+  }, []);
+
+  const fetchMentionCandidates = useCallback(async (dId) => {
+    if (!dId) return;
+    try {
+      const res = await api.get(`/documents/${dId}/comments/users-for-mention`, { skipAuthRedirect: true });
+      setMentionCandidates(res.data || []);
+    } catch (err) {
+      console.error('Failed to load mention candidates:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (docId) {
+      fetchComments(docId);
+      fetchApprovalHistory(docId);
+      fetchMentionCandidates(docId);
+    }
+  }, [docId, fetchComments, fetchApprovalHistory, fetchMentionCandidates]);
+
+  // Socket event listeners for real-time collaboration updates
+  useEffect(() => {
+    if (!socket || !docId) return;
+
+    const handleCommentAdded = () => fetchComments(docId);
+    const handleCommentUpdated = () => fetchComments(docId);
+    const handleCommentDeleted = () => fetchComments(docId);
+    const handleCommentResolved = () => fetchComments(docId);
+    const handleApprovalUpdated = (payload) => {
+      if (payload?.approvalStatus) setApprovalStatus(payload.approvalStatus);
+      fetchApprovalHistory(docId);
+    };
+
+    socket.on('comment:added', handleCommentAdded);
+    socket.on('comment:updated', handleCommentUpdated);
+    socket.on('comment:deleted', handleCommentDeleted);
+    socket.on('comment:resolved', handleCommentResolved);
+    socket.on('approval:updated', handleApprovalUpdated);
+
+    return () => {
+      socket.off('comment:added', handleCommentAdded);
+      socket.off('comment:updated', handleCommentUpdated);
+      socket.off('comment:deleted', handleCommentDeleted);
+      socket.off('comment:resolved', handleCommentResolved);
+      socket.off('approval:updated', handleApprovalUpdated);
+    };
+  }, [socket, docId, fetchComments, fetchApprovalHistory]);
+
+  const handleAddComment = async (commentData) => {
+    if (!docId) return;
+    try {
+      const res = await api.post(`/documents/${docId}/comments`, commentData, { skipAuthRedirect: true });
+      fetchComments(docId);
+      setActiveCommentId(res.data.id);
+      setShowCommentPanel(true);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to post comment');
+    }
+  };
+
+  const handleEditComment = async (commentId, content) => {
+    try {
+      await api.patch(`/comments/${commentId}`, { content });
+      fetchComments(docId);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to edit comment');
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await api.delete(`/comments/${commentId}`);
+      fetchComments(docId);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete comment');
+    }
+  };
+
+  const handleResolveComment = async (commentId) => {
+    try {
+      await api.post(`/comments/${commentId}/resolve`);
+      fetchComments(docId);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to resolve comment');
+    }
+  };
+
+  const handleExportReport = () => {
+    if (!docId) return;
+    window.open(`/api/documents/${docId}/comments/export`, '_blank');
+  };
+
   useSignedUrlRefresh({
     token,
     active: state === 'pdf',
@@ -229,6 +367,17 @@ export default function Viewer() {
 
   return (
     <div style={styles.page}>
+      {/* Review Banner for Pending Review documents */}
+      <ReviewBanner
+        docId={docId}
+        approvalStatus={approvalStatus}
+        approvalHistory={approvalHistory}
+        currentUser={currentUser}
+        onDecisionSubmitted={() => {
+          fetchApprovalHistory(docId);
+        }}
+      />
+
       <div style={{
         ...styles.header,
         height: isMobile ? 'auto' : 52,
@@ -327,6 +476,19 @@ export default function Viewer() {
                 initialDiff={activeDiff}
                 token={token}
                 isMobile={isMobile}
+                comments={allComments}
+                activeCommentId={activeCommentId}
+                onSelectComment={(c) => {
+                  setActiveCommentId(c.id);
+                  setShowCommentPanel(true);
+                }}
+                onAddComment={handleAddComment}
+                showResolved={showResolved}
+                allowComments={allowComments}
+                currentUserId={currentUser?.id}
+                onToggleCommentPanel={() => setShowCommentPanel(!showCommentPanel)}
+                commentCount={allComments.length}
+                showCommentPanel={showCommentPanel}
               />
             )}
           </div>
@@ -361,6 +523,19 @@ export default function Viewer() {
                 onRetry={handleRetryB}
                 token={token}
                 isMobile={isMobile}
+                comments={allComments}
+                activeCommentId={activeCommentId}
+                onSelectComment={(c) => {
+                  setActiveCommentId(c.id);
+                  setShowCommentPanel(true);
+                }}
+                onAddComment={handleAddComment}
+                showResolved={showResolved}
+                allowComments={allowComments}
+                currentUserId={currentUser?.id}
+                onToggleCommentPanel={() => setShowCommentPanel(!showCommentPanel)}
+                commentCount={allComments.length}
+                showCommentPanel={showCommentPanel}
               />
             )}
           </div>
@@ -376,8 +551,43 @@ export default function Viewer() {
           initialDiff={activeDiff}
           token={token}
           isMobile={isMobile}
+          comments={allComments}
+          activeCommentId={activeCommentId}
+          onSelectComment={(c) => {
+            setActiveCommentId(c.id);
+            setShowCommentPanel(true);
+          }}
+          onAddComment={handleAddComment}
+          showResolved={showResolved}
+          allowComments={allowComments}
+          currentUserId={currentUser?.id}
+          onToggleCommentPanel={() => setShowCommentPanel(!showCommentPanel)}
+          commentCount={allComments.length}
+          showCommentPanel={showCommentPanel}
         />
       )}
+
+      {/* Slide-over Comment Panel */}
+      <CommentPanel
+        isOpen={showCommentPanel}
+        onClose={() => setShowCommentPanel(false)}
+        docId={docId}
+        currentVersionNumber={versionNumber}
+        activeThreads={activeThreads}
+        previousThreads={previousThreads}
+        activeCommentId={activeCommentId}
+        onSelectComment={(c) => setActiveCommentId(c.id)}
+        onAddComment={handleAddComment}
+        onEditComment={handleEditComment}
+        onDeleteComment={handleDeleteComment}
+        onResolveComment={handleResolveComment}
+        onExportReport={handleExportReport}
+        showResolved={showResolved}
+        onToggleShowResolved={setShowResolved}
+        currentUser={currentUser}
+        mentionCandidates={mentionCandidates}
+      />
+
       <ViewerToast
         message={toastMessage}
         onDismiss={() => setToastMessage('')}

@@ -28,7 +28,10 @@ export default function PdfToolbar({
   isMobile,
   diffReady,
   showDiffPanel,
-  onToggleDiffPanel
+  onToggleDiffPanel,
+  onToggleCommentPanel,
+  commentCount = 0,
+  showCommentPanel,
 }) {
   const [downloading, setDownloading] = useState(false);
 
@@ -223,6 +226,39 @@ export default function PdfToolbar({
 
         {/* Action Group */}
         <div className="responsive-toolbar-group" style={{ ...styles.group, marginLeft: 'auto' }}>
+          {onToggleCommentPanel && (
+            <button
+              style={{
+                ...styles.btnSmall,
+                background: showCommentPanel ? '#2563eb' : '#fff',
+                color: showCommentPanel ? '#ffffff' : '#334155',
+                fontWeight: 600,
+                borderColor: showCommentPanel ? '#2563eb' : '#cbd5e1',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+              }}
+              onClick={onToggleCommentPanel}
+              title="Toggle Comments & Threads Panel"
+            >
+              💬 Comments
+              {commentCount > 0 && (
+                <span
+                  style={{
+                    backgroundColor: showCommentPanel ? '#ffffff' : '#2563eb',
+                    color: showCommentPanel ? '#2563eb' : '#ffffff',
+                    borderRadius: '10px',
+                    padding: '1px 6px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {commentCount}
+                </span>
+              )}
+            </button>
+          )}
           {diffReady && (
             <button
               style={{

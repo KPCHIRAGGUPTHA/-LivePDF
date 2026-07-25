@@ -97,6 +97,12 @@ app.use('/api/qa', qaRoutes);
 const notificationRoutes = require('./routes/notifications');
 app.use('/api/notifications', notificationRoutes);
 
+const commentRoutes = require('./routes/comments');
+app.use('/api/documents/:docId/comments', commentRoutes);
+
+const approvalRoutes = require('./routes/approvals');
+app.use('/api/documents/:docId/approval', approvalRoutes);
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

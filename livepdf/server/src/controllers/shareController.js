@@ -46,6 +46,7 @@ async function createShareLink(req, res) {
     allowDownload,   // boolean, default true
     expiresAt,       // ISO date string or null
     showWatermark,   // boolean, default false
+    allowComments,   // boolean, default true
   } = req.body;
 
   try {
@@ -76,11 +77,11 @@ async function createShareLink(req, res) {
 
     const result = await pool.query(
       `INSERT INTO share_links
-        (document_id, token, link_type, password_hash, allow_download, expires_at, created_by, show_watermark)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, token, link_type, allow_download, expires_at, created_at, show_watermark`,
+        (document_id, token, link_type, password_hash, allow_download, expires_at, created_by, show_watermark, allow_comments)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, token, link_type, allow_download, expires_at, created_at, show_watermark, allow_comments`,
       [documentId, token, linkType, passwordHash,
-       allowDownload ?? true, expiresAt || null, req.user.id, showWatermark ?? false]
+       allowDownload ?? true, expiresAt || null, req.user.id, showWatermark ?? false, allowComments ?? true]
     );
 
     const link = result.rows[0];
@@ -105,6 +106,7 @@ async function createShareLink(req, res) {
       linkType: link.link_type,
       allowDownload: link.allow_download,
       showWatermark: link.show_watermark,
+      allowComments: link.allow_comments,
       expiresAt: link.expires_at,
       createdAt: link.created_at,
     });
@@ -122,7 +124,7 @@ async function resolveToken(req, res) {
   try {
     // 1. Find the share link
     const linkResult = await pool.query(
-      `SELECT sl.*, d.current_version_id, d.title
+      `SELECT sl.*, d.current_version_id, d.title, d.approval_status
        FROM share_links sl
        JOIN documents d ON d.id = sl.document_id
        WHERE sl.token = $1`,
@@ -134,6 +136,15 @@ async function resolveToken(req, res) {
     }
 
     const link = linkResult.rows[0];
+
+    // Check approval status governance — restrict public sharing during review
+    if (link.link_type === 'public' && link.approval_status === 'Pending Review') {
+      return res.status(403).json({
+        error: 'This document is currently under review and is not publicly accessible.',
+        isUnderReview: true,
+        title: link.title,
+      });
+    }
 
     // 2. Check expiry
     if (link.expires_at && new Date() > new Date(link.expires_at)) {
@@ -242,6 +253,8 @@ async function resolveToken(req, res) {
       title: link.title,
       allowDownload: link.allow_download,
       showWatermark: link.show_watermark,
+      allowComments: link.allow_comments ?? true,
+      approvalStatus: link.approval_status || 'Draft',
       documentId: link.document_id,
       versionNumber: resolvedVersionNum,
       linkType: link.link_type,

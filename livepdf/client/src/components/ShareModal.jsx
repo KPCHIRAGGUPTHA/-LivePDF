@@ -12,6 +12,7 @@ export default function ShareModal({ doc, onClose }) {
   const [allowedEmails, setAllowedEmails] = useState([]);
   const [allowDownload, setAllowDownload] = useState(true);
   const [showWatermark, setShowWatermark] = useState(false);
+  const [allowComments, setAllowComments] = useState(true);
   const [expiresAt, setExpiresAt] = useState('');
 
   // Output states
@@ -68,6 +69,7 @@ export default function ShareModal({ doc, onClose }) {
       linkType: activeTab,
       allowDownload,
       showWatermark,
+      allowComments,
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
     };
 
@@ -234,6 +236,15 @@ export default function ShareModal({ doc, onClose }) {
                   onChange={(e) => setShowWatermark(e.target.checked)}
                 />
                 <label htmlFor="show-watermark" style={styles.checkboxLabel}>Show watermark on this link</label>
+              </div>
+              <div style={styles.checkboxSetting}>
+                <input
+                  type="checkbox"
+                  id="allow-comments"
+                  checked={allowComments}
+                  onChange={(e) => setAllowComments(e.target.checked)}
+                />
+                <label htmlFor="allow-comments" style={styles.checkboxLabel}>Allow comments on this link</label>
               </div>
             </div>
 

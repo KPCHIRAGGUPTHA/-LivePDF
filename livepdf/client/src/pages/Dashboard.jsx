@@ -8,6 +8,8 @@ import ProgressBar from '../components/ProgressBar';
 import ShareModal from '../components/ShareModal';
 import NotificationBell from '../components/NotificationBell';
 import AuditLogModal from '../components/AuditLogModal';
+import SubmitForReviewModal from '../components/SubmitForReviewModal';
+import ApprovalHistoryModal from '../components/ApprovalHistoryModal';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -33,6 +35,11 @@ export default function Dashboard() {
   const [followedDocs, setFollowedDocs] = useState([]);
   const [loadingPrefs, setLoadingPrefs] = useState(false);
   const [activeAuditDoc, setActiveAuditDoc] = useState(null);
+
+  // Phase 10 Approval States
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'Draft' | 'Pending Review' | 'Approved' | 'Rejected' | 'Changes Requested'
+  const [submitReviewDoc, setSubmitReviewDoc] = useState(null);
+  const [showApprovalHistoryDoc, setShowApprovalHistoryDoc] = useState(null);
 
   // Phase 9 States
   const [subTab, setSubTab] = useState('notifications'); // 'notifications' | 'billing' | 'organisations' | 'keys'
@@ -390,8 +397,34 @@ export default function Dashboard() {
         {activeTab === 'documents' ? (
           <>
             {/* Header info */}
-            <div style={styles.topSection}>
-              <h1 style={styles.heading}>My Documents</h1>
+            <div style={{ ...styles.topSection, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <h1 style={styles.heading}>My Documents</h1>
+                
+                {/* Status Filter Dropdown */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    backgroundColor: '#ffffff',
+                    color: '#334155',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="Draft">Draft</option>
+                  <option value="Pending Review">Pending Review</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Changes Requested">Changes Requested</option>
+                </select>
+              </div>
+
               {replacingDoc && (
                 <div style={styles.replaceNotice}>
                   <span>Replacing version for <strong>{replacingDoc.title}</strong></span>
@@ -472,16 +505,20 @@ export default function Dashboard() {
               </div>
             ) : (
               <div style={styles.grid}>
-                {documents.map((doc) => (
-                  <DocumentCard
-                    key={doc.id}
-                    doc={doc}
-                    onReplace={handleReplaceTrigger}
-                    onDelete={handleDelete}
-                    onShare={setActiveShareDoc}
-                    onHistory={setActiveAuditDoc}
-                  />
-                ))}
+                {documents
+                  .filter(doc => statusFilter === 'ALL' || doc.approval_status === statusFilter)
+                  .map((doc) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={doc}
+                      onReplace={handleReplaceTrigger}
+                      onDelete={handleDelete}
+                      onShare={setActiveShareDoc}
+                      onHistory={setActiveAuditDoc}
+                      onSubmitForReview={(d) => setSubmitReviewDoc(d)}
+                      onShowApprovalHistory={(d) => setShowApprovalHistoryDoc(d)}
+                    />
+                  ))}
               </div>
             )}
           </>
@@ -796,6 +833,28 @@ export default function Dashboard() {
         <AuditLogModal
           doc={activeAuditDoc}
           onClose={() => setActiveAuditDoc(null)}
+        />
+      )}
+
+      {submitReviewDoc && (
+        <SubmitForReviewModal
+          isOpen={!!submitReviewDoc}
+          onClose={() => setSubmitReviewDoc(null)}
+          docId={submitReviewDoc.id}
+          docTitle={submitReviewDoc.title}
+          onSubmitted={() => {
+            fetchDocuments();
+            setSubmitReviewDoc(null);
+          }}
+        />
+      )}
+
+      {showApprovalHistoryDoc && (
+        <ApprovalHistoryModal
+          isOpen={!!showApprovalHistoryDoc}
+          onClose={() => setShowApprovalHistoryDoc(null)}
+          docId={showApprovalHistoryDoc.id}
+          docTitle={showApprovalHistoryDoc.title}
         />
       )}
     </div>

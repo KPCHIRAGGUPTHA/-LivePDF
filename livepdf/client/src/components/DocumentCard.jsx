@@ -3,7 +3,7 @@ import { useState } from 'react';
 import api from '../utils/api';
 import PreviewModal from './PreviewModal';
 
-export default function DocumentCard({ doc, onReplace, onDelete, onShare, onHistory }) {
+export default function DocumentCard({ doc, onReplace, onDelete, onShare, onHistory, onSubmitForReview, onShowApprovalHistory }) {
   const [isDeleteHovered, setIsDeleteHovered] = useState(false);
   const [isReplaceHovered, setIsReplaceHovered] = useState(false);
   const [isShareHovered, setIsShareHovered] = useState(false);
@@ -79,7 +79,36 @@ export default function DocumentCard({ doc, onReplace, onDelete, onShare, onHist
           <span style={styles.icon}>📄</span>
           <span style={styles.title}>{doc.title}</span>
         </div>
-        <span style={styles.badge}>v{doc.version_number}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Approval Status Badge */}
+          {doc.approval_status && (
+            <span
+              onClick={() => onShowApprovalHistory && onShowApprovalHistory(doc)}
+              title="Click to view approval history"
+              style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                backgroundColor:
+                  doc.approval_status === 'Approved' ? '#dcfce7' :
+                  doc.approval_status === 'Rejected' ? '#fee2e2' :
+                  doc.approval_status === 'Changes Requested' ? '#fef3c7' :
+                  doc.approval_status === 'Pending Review' ? '#dbeafe' : '#f1f5f9',
+                color:
+                  doc.approval_status === 'Approved' ? '#15803d' :
+                  doc.approval_status === 'Rejected' ? '#b91c1c' :
+                  doc.approval_status === 'Changes Requested' ? '#b45309' :
+                  doc.approval_status === 'Pending Review' ? '#1d4ed8' : '#475569',
+              }}
+            >
+              {doc.approval_status}
+            </span>
+          )}
+          <span style={styles.badge}>v{doc.version_number}</span>
+        </div>
       </div>
 
       <div style={styles.metaRow}>
@@ -116,6 +145,14 @@ export default function DocumentCard({ doc, onReplace, onDelete, onShare, onHist
           onClick={() => onReplace(doc)}
         >
           🔄 Replace
+        </button>
+        <button
+          className="responsive-card-btn"
+          style={{ ...styles.btn, backgroundColor: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd' }}
+          onClick={() => onSubmitForReview && onSubmitForReview(doc)}
+          title="Submit document for formal approval review"
+        >
+          📋 Review
         </button>
         <button
           className="responsive-card-btn"

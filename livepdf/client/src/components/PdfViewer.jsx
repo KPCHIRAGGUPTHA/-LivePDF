@@ -6,12 +6,32 @@ import DiffOverlay from './DiffOverlay';
 import DiffPanel from './DiffPanel';
 import useDiff from '../hooks/useDiff';
 import WatermarkOverlay from './WatermarkOverlay';
+import CommentOverlay from './CommentOverlay';
 import { useAuth } from '../context/AuthContext';
 
 // Import react-pdf styles for correct text-layer absolute positioning and overlay
 import 'react-pdf/dist/Page/TextLayer.css';
 
-export default function PdfViewer({ url, title, allowDownload, showWatermark, onRetry, socket, initialDiff, token, isMobile: isMobileProp }) {
+export default function PdfViewer({
+  url,
+  title,
+  allowDownload,
+  showWatermark,
+  onRetry,
+  socket,
+  initialDiff,
+  token,
+  isMobile: isMobileProp,
+  comments = [],
+  activeCommentId,
+  onSelectComment,
+  onAddComment,
+  showResolved = false,
+  allowComments = true,
+  currentUserId,
+}) {
+  const [newCommentTarget, setNewCommentTarget] = useState(null); // { pageNumber, x, y }
+  const [newCommentText, setNewCommentText] = useState('');
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
@@ -209,7 +229,16 @@ export default function PdfViewer({ url, title, allowDownload, showWatermark, on
         key={pageNum}
         style={styles.pageCard}
       >
-        <div style={{ position: 'relative', display: 'inline-block' }}>
+        <div
+          style={{ position: 'relative', display: 'inline-block', cursor: allowComments ? 'crosshair' : 'default' }}
+          onClick={(e) => {
+            if (!allowComments) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickX = (e.clientX - rect.left) / scale;
+            const clickY = (e.clientY - rect.top) / scale;
+            setNewCommentTarget({ pageNumber: pageNum, x: clickX, y: clickY });
+          }}
+        >
           <Page
             pageNumber={pageNum}
             scale={scale}
@@ -230,6 +259,69 @@ export default function PdfViewer({ url, title, allowDownload, showWatermark, on
               width={pageDimensions[pageNum].width}
               height={pageDimensions[pageNum].height}
             />
+          )}
+
+          {/* Phase 10 Inline Comment Markers Overlay */}
+          <CommentOverlay
+            pageNumber={pageNum}
+            comments={comments}
+            scale={scale}
+            activeCommentId={activeCommentId}
+            onSelectComment={onSelectComment}
+            currentUserId={currentUserId}
+            showResolved={showResolved}
+          />
+
+          {/* Click to Add Comment Popover */}
+          {newCommentTarget && newCommentTarget.pageNumber === pageNum && (
+            <div
+              style={{
+                position: 'absolute',
+                left: `${newCommentTarget.x * scale}px`,
+                top: `${newCommentTarget.y * scale}px`,
+                backgroundColor: '#ffffff',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '12px',
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)',
+                zIndex: 50,
+                width: '240px',
+                transform: 'translate(-50%, 10px)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                Add Comment on Page {pageNum}
+              </div>
+              <textarea
+                autoFocus
+                rows={2}
+                placeholder="Type your comment..."
+                value={newCommentText}
+                onChange={(e) => setNewCommentText(e.target.value)}
+                style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '8px' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                <button onClick={() => setNewCommentTarget(null)} style={{ padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
+                <button
+                  onClick={() => {
+                    if (newCommentText.trim() && onAddComment) {
+                      onAddComment({
+                        pageNumber: pageNum,
+                        x: newCommentTarget.x,
+                        y: newCommentTarget.y,
+                        content: newCommentText.trim(),
+                      });
+                      setNewCommentTarget(null);
+                      setNewCommentText('');
+                    }
+                  }}
+                  style={{ padding: '4px 8px', fontSize: '11px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Post
+                </button>
+              </div>
+            </div>
           )}
           {/* Highlights overlay */}
           {pageMatches.length > 0 && (
