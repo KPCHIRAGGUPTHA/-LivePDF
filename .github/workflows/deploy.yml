@@ -68,10 +68,12 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu/livepdf
-            export DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
-            export API_IMAGE="${DOCKER_USERNAME:-kpchiragguptha}/livepdf-server:latest"
-            export CLIENT_IMAGE="${DOCKER_USERNAME:-kpchiragguptha}/livepdf-client:latest"
-            export PYTHON_IMAGE="${DOCKER_USERNAME:-kpchiragguptha}/livepdf-python:latest"
+            RAW_USER="${{ secrets.DOCKER_USERNAME }}"
+            LOWER_USER=$(echo "$RAW_USER" | tr '[:upper:]' '[:lower:]')
+            export DOCKER_USERNAME="${LOWER_USER:-kpchiragguptha}"
+            export API_IMAGE="${DOCKER_USERNAME}/livepdf-server:latest"
+            export CLIENT_IMAGE="${DOCKER_USERNAME}/livepdf-client:latest"
+            export PYTHON_IMAGE="${DOCKER_USERNAME}/livepdf-python:latest"
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --force-recreate
             pm2 restart livepdf-docker-stack || true
