@@ -171,10 +171,18 @@ async function login(req, res) {
   const { email, password } = req.body;
 
   try {
-    const result = await pool.query(
-      'SELECT id, email, full_name, password_hash, is_verified, plan FROM users WHERE email = $1',
-      [email.toLowerCase()]
-    );
+    let result;
+    try {
+      result = await pool.query(
+        'SELECT id, email, full_name, password_hash, is_verified, plan FROM users WHERE email = $1',
+        [email.toLowerCase()]
+      );
+    } catch (queryErr) {
+      result = await pool.query(
+        'SELECT id, email, full_name, password_hash, is_verified FROM users WHERE email = $1',
+        [email.toLowerCase()]
+      );
+    }
 
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });

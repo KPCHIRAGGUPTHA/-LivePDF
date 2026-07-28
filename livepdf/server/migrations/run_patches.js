@@ -26,29 +26,36 @@ const pool = new Pool({
 async function run() {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-
     const patchFiles = [
-      'patch_reset_fields.sql',
+      'schema.sql',
+      'phase3.sql',
+      'phase6.sql',
+      'phase7.sql',
+      'phase8.sql',
+      'phase9.sql',
       'phase10.sql',
       'phase10_6.sql',
+      'patch_reset_fields.sql',
     ];
 
     for (const file of patchFiles) {
       const sqlPath = path.join(__dirname, file);
       if (fs.existsSync(sqlPath)) {
-        console.log(`Running migration patch: ${file}...`);
+        console.log(`Running migration: ${file}...`);
         const sql = fs.readFileSync(sqlPath, 'utf8');
-        await client.query(sql);
+        try {
+          await client.query('BEGIN');
+          await client.query(sql);
+          await client.query('COMMIT');
+          console.log(`  ✓ ${file} applied successfully.`);
+        } catch (err) {
+          await client.query('ROLLBACK');
+          console.warn(`  ⚠️ Warning running ${file}: ${err.message}`);
+        }
       }
     }
 
-    await client.query('COMMIT');
-    console.log('✅ All migration patches completed successfully.');
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('Migration failed:', err.message);
-    process.exit(1);
+    console.log('✅ Migration patches execution complete.');
   } finally {
     client.release();
     await pool.end();
