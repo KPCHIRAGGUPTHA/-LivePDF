@@ -21,6 +21,7 @@ const fs = require('fs');
     }
   }
 });
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'livepdf_production_fallback_jwt_secret_key_2026';
 
 const http = require('http');
 const express = require('express');

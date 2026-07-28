@@ -12,9 +12,10 @@ function generateOTP() {
 }
 
 function signToken(user) {
+  const secret = process.env.JWT_SECRET || 'livepdf_production_fallback_jwt_secret_key_2026';
   return jwt.sign(
     { id: user.id, email: user.email, fullName: user.full_name, plan: user.plan || 'FREE' },
-    process.env.JWT_SECRET,
+    secret,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 }
