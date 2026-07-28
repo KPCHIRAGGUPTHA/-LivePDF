@@ -28,14 +28,23 @@ async function run() {
   try {
     await client.query('BEGIN');
 
-    const sqlPath = path.join(__dirname, 'patch_reset_fields.sql');
-    const sql = fs.readFileSync(sqlPath, 'utf8');
+    const patchFiles = [
+      'patch_reset_fields.sql',
+      'phase10.sql',
+      'phase10_6.sql',
+    ];
 
-    console.log('Running reset password columns patch migration...');
-    await client.query(sql);
+    for (const file of patchFiles) {
+      const sqlPath = path.join(__dirname, file);
+      if (fs.existsSync(sqlPath)) {
+        console.log(`Running migration patch: ${file}...`);
+        const sql = fs.readFileSync(sqlPath, 'utf8');
+        await client.query(sql);
+      }
+    }
 
     await client.query('COMMIT');
-    console.log('✅ Patch migration complete — users table updated successfully.');
+    console.log('✅ All migration patches completed successfully.');
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Migration failed:', err.message);

@@ -100,6 +100,9 @@ app.use('/api/notifications', notificationRoutes);
 const commentRoutes = require('./routes/comments');
 app.use('/api/documents/:docId/comments', commentRoutes);
 
+const redlineRoutes = require('./routes/redlines');
+app.use('/api/documents/:docId/redlines', redlineRoutes);
+
 const approvalRoutes = require('./routes/approvals');
 app.use('/api/documents/:docId/approval', approvalRoutes);
 

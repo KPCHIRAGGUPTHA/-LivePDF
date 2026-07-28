@@ -69,7 +69,8 @@ jobs:
           script: |
             cd /home/ubuntu/livepdf
             docker compose -f docker-compose.prod.yml pull
-            pm2 restart livepdf-docker-stack
+            docker compose -f docker-compose.prod.yml up -d
+            pm2 restart livepdf-docker-stack || true
             # Wait for livepdf-api-prod to be fully running (up to 30s)
             for i in {1..10}; do
               if [ "$(docker inspect -f '{{.State.Running}}' livepdf-api-prod 2>/dev/null)" = "true" ]; then

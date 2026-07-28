@@ -32,6 +32,9 @@ export default function PdfToolbar({
   onToggleCommentPanel,
   commentCount = 0,
   showCommentPanel,
+  onToggleRedlinePanel,
+  redlineCount = 0,
+  showRedlinePanel,
 }) {
   const [downloading, setDownloading] = useState(false);
 
@@ -255,6 +258,41 @@ export default function PdfToolbar({
                   }}
                 >
                   {commentCount}
+                </span>
+              )}
+            </button>
+          )}
+          {onToggleRedlinePanel && (
+            <button
+              style={{
+                ...styles.btnSmall,
+                ...(hovers.redlinePanel ? styles.btnHover : {}),
+                background: showRedlinePanel ? '#0f172a' : '#fff',
+                color: showRedlinePanel ? '#fff' : '#334155',
+                borderColor: showRedlinePanel ? '#0f172a' : '#cbd5e1',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: showRedlinePanel ? '600' : 'normal',
+              }}
+              onClick={onToggleRedlinePanel}
+              onMouseEnter={() => setHover('redlinePanel', true)}
+              onMouseLeave={() => setHover('redlinePanel', false)}
+              title={showRedlinePanel ? 'Hide Redline Proposals' : 'Show Redline Proposals'}
+            >
+              ✍️ Redlines
+              {redlineCount > 0 && (
+                <span
+                  style={{
+                    backgroundColor: showRedlinePanel ? '#ffffff' : '#2563eb',
+                    color: showRedlinePanel ? '#0f172a' : '#ffffff',
+                    borderRadius: '10px',
+                    padding: '1px 6px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {redlineCount}
                 </span>
               )}
             </button>

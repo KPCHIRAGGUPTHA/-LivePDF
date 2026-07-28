@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Optional
 from comparator import compute_diff
 from scorer import score_all_changes
 from comment_exporter import generate_comments_pdf_report
+from redliner import apply_redlines
 import uvicorn
 import os
 
@@ -46,6 +47,26 @@ class CommentExportRequest(BaseModel):
     approvalStatus: Optional[str] = 'Draft'
     comments: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
     approvals: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+
+
+class RedlineProposalItem(BaseModel):
+    id: str
+    page_number: int = Field(default=1, alias="pageNumber")
+    x: float = 0.0
+    y: float = 0.0
+    width: float = 0.0
+    height: float = 0.0
+    original_text: str = Field(default="", alias="originalText")
+    proposed_text: Optional[str] = Field(default=None, alias="proposedText")
+    proposal_type: str = Field(default="replacement", alias="proposalType")
+
+    class Config:
+        populate_by_name = True
+
+
+class RedlineApplyRequest(BaseModel):
+    s3_key: str
+    proposals: List[Dict[str, Any]]
 
 
 @app.get('/health')
@@ -87,5 +108,21 @@ def export_comments(payload: Dict[str, Any] = Body(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post('/redline/apply')
+def apply_redline_changes(body: RedlineApplyRequest):
+    try:
+        pdf_bytes = apply_redlines(body.s3_key, body.proposals)
+        return Response(
+            content=pdf_bytes,
+            media_type='application/pdf',
+            headers={'Content-Disposition': 'attachment; filename="redlined_output.pdf"'}
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == '__main__':
     uvicorn.run('main:app', host='0.0.0.0', port=int(os.getenv('PORT', 8001)), reload=True)
+

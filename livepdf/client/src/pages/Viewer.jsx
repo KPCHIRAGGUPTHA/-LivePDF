@@ -9,6 +9,7 @@ import ConnectionStatus from '../components/ConnectionStatus';
 import ViewerToast from '../components/ViewerToast';
 import ReviewBanner from '../components/ReviewBanner';
 import CommentPanel from '../components/CommentPanel';
+import RedlinePanel from '../components/RedlinePanel';
 import { useAuth } from '../context/AuthContext';
 
 export default function Viewer() {
@@ -51,11 +52,18 @@ export default function Viewer() {
   const [showResolved, setShowResolved] = useState(false);
   const [mentionCandidates, setMentionCandidates] = useState([]);
 
+  // Phase 10.6 Redline States
+  const [redlines, setRedlines] = useState([]);
+  const [activeProposalId, setActiveProposalId] = useState(null);
+  const [showRedlinePanel, setShowRedlinePanel] = useState(false);
+  const [applyingRedlines, setApplyingRedlines] = useState(false);
+
   const [title, setTitle] = useState('');
   const [allowDownload, setAllowDownload] = useState(false);
   const [showWatermark, setShowWatermark] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [docId, setDocId] = useState(null);
+  const [docOwnerId, setDocOwnerId] = useState(null);
   const [versionNumber, setVersionNumber] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [linkType, setLinkType] = useState('public');
@@ -106,6 +114,7 @@ export default function Viewer() {
         setAllowComments(res.data.allowComments ?? true);
         setApprovalStatus(res.data.approvalStatus || 'Draft');
         setDocId(res.data.documentId);
+        setDocOwnerId(res.data.ownerId || null);
         setVersionNumber(res.data.versionNumber);
         setLinkType(res.data.linkType || 'public');
         if (res.data.versions && res.data.versions.length > 0) {
@@ -241,13 +250,24 @@ export default function Viewer() {
     }
   }, []);
 
+  const fetchRedlines = useCallback(async (dId) => {
+    if (!dId) return;
+    try {
+      const res = await api.get(`/documents/${dId}/redlines`, { skipAuthRedirect: true });
+      setRedlines(res.data.proposals || []);
+    } catch (err) {
+      console.error('Failed to load redline proposals:', err);
+    }
+  }, []);
+
   useEffect(() => {
     if (docId) {
       fetchComments(docId);
       fetchApprovalHistory(docId);
       fetchMentionCandidates(docId);
+      fetchRedlines(docId);
     }
-  }, [docId, fetchComments, fetchApprovalHistory, fetchMentionCandidates]);
+  }, [docId, fetchComments, fetchApprovalHistory, fetchMentionCandidates, fetchRedlines]);
 
   // Socket event listeners for real-time collaboration updates
   useEffect(() => {
@@ -262,11 +282,21 @@ export default function Viewer() {
       fetchApprovalHistory(docId);
     };
 
+    const handleRedlineCreated = () => fetchRedlines(docId);
+    const handleRedlineUpdated = () => fetchRedlines(docId);
+    const handleRedlineApplied = () => {
+      fetchRedlines(docId);
+      fetchApprovalHistory(docId);
+    };
+
     socket.on('comment:added', handleCommentAdded);
     socket.on('comment:updated', handleCommentUpdated);
     socket.on('comment:deleted', handleCommentDeleted);
     socket.on('comment:resolved', handleCommentResolved);
     socket.on('approval:updated', handleApprovalUpdated);
+    socket.on('redline:created', handleRedlineCreated);
+    socket.on('redline:updated', handleRedlineUpdated);
+    socket.on('redline:applied', handleRedlineApplied);
 
     return () => {
       socket.off('comment:added', handleCommentAdded);
@@ -274,8 +304,51 @@ export default function Viewer() {
       socket.off('comment:deleted', handleCommentDeleted);
       socket.off('comment:resolved', handleCommentResolved);
       socket.off('approval:updated', handleApprovalUpdated);
+      socket.off('redline:created', handleRedlineCreated);
+      socket.off('redline:updated', handleRedlineUpdated);
+      socket.off('redline:applied', handleRedlineApplied);
     };
-  }, [socket, docId, fetchComments, fetchApprovalHistory]);
+  }, [socket, docId, fetchComments, fetchApprovalHistory, fetchRedlines]);
+
+  const handleAddRedlineProposal = async (proposalData) => {
+    if (!docId) return;
+    try {
+      await api.post(`/documents/${docId}/redlines`, {
+        ...proposalData,
+        versionId: versions.find(v => v.versionNumber === versionNumber)?.id,
+      }, { skipAuthRedirect: true });
+      fetchRedlines(docId);
+      setToastMessage('Redline proposal submitted');
+    } catch (err) {
+      alert('Failed to submit proposal: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleRedlineDecision = async (proposalId, decision) => {
+    if (!docId) return;
+    try {
+      await api.patch(`/documents/${docId}/redlines/${proposalId}/decision`, { decision });
+      fetchRedlines(docId);
+      setToastMessage(`Proposal ${decision}`);
+    } catch (err) {
+      alert(`Failed to ${decision} proposal: ` + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleApplyRedlines = async () => {
+    if (!docId) return;
+    setApplyingRedlines(true);
+    try {
+      const res = await api.post(`/documents/${docId}/redlines/apply`);
+      setToastMessage(`Applied accepted redlines into version ${res.data.newVersionNumber}`);
+      fetchRedlines(docId);
+      setShowRedlinePanel(false);
+    } catch (err) {
+      alert('Failed to apply redlines: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setApplyingRedlines(false);
+    }
+  };
 
   const handleAddComment = async (commentData) => {
     if (!docId) return;
@@ -489,6 +562,16 @@ export default function Viewer() {
                 onToggleCommentPanel={() => setShowCommentPanel(!showCommentPanel)}
                 commentCount={allComments.length}
                 showCommentPanel={showCommentPanel}
+                redlines={redlines}
+                activeProposalId={activeProposalId}
+                onSelectProposal={(p) => {
+                  setActiveProposalId(p.id);
+                  setShowRedlinePanel(true);
+                }}
+                onAddRedlineProposal={handleAddRedlineProposal}
+                onToggleRedlinePanel={() => setShowRedlinePanel(!showRedlinePanel)}
+                redlineCount={redlines.filter(r => r.status === 'pending' || r.status === 'accepted').length}
+                showRedlinePanel={showRedlinePanel}
               />
             )}
           </div>
@@ -536,6 +619,16 @@ export default function Viewer() {
                 onToggleCommentPanel={() => setShowCommentPanel(!showCommentPanel)}
                 commentCount={allComments.length}
                 showCommentPanel={showCommentPanel}
+                redlines={redlines}
+                activeProposalId={activeProposalId}
+                onSelectProposal={(p) => {
+                  setActiveProposalId(p.id);
+                  setShowRedlinePanel(true);
+                }}
+                onAddRedlineProposal={handleAddRedlineProposal}
+                onToggleRedlinePanel={() => setShowRedlinePanel(!showRedlinePanel)}
+                redlineCount={redlines.filter(r => r.status === 'pending' || r.status === 'accepted').length}
+                showRedlinePanel={showRedlinePanel}
               />
             )}
           </div>
@@ -564,6 +657,16 @@ export default function Viewer() {
           onToggleCommentPanel={() => setShowCommentPanel(!showCommentPanel)}
           commentCount={allComments.length}
           showCommentPanel={showCommentPanel}
+          redlines={redlines}
+          activeProposalId={activeProposalId}
+          onSelectProposal={(p) => {
+            setActiveProposalId(p.id);
+            setShowRedlinePanel(true);
+          }}
+          onAddRedlineProposal={handleAddRedlineProposal}
+          onToggleRedlinePanel={() => setShowRedlinePanel(!showRedlinePanel)}
+          redlineCount={redlines.filter(r => r.status === 'pending' || r.status === 'accepted').length}
+          showRedlinePanel={showRedlinePanel}
         />
       )}
 
@@ -587,6 +690,53 @@ export default function Viewer() {
         currentUser={currentUser}
         mentionCandidates={mentionCandidates}
       />
+
+      {/* Slide-over Redline Panel */}
+      {showRedlinePanel && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: '380px',
+            maxWidth: '100vw',
+            zIndex: 100,
+            boxShadow: '-4px 0 25px rgba(0,0,0,0.15)',
+          }}
+        >
+          <div style={{ position: 'relative', height: '100%' }}>
+            <button
+              onClick={() => setShowRedlinePanel(false)}
+              style={{
+                position: 'absolute',
+                top: '14px',
+                right: '14px',
+                zIndex: 110,
+                border: 'none',
+                background: '#e2e8f0',
+                borderRadius: '50%',
+                width: '24px',
+                height: '24px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 700,
+              }}
+            >
+              ✕
+            </button>
+            <RedlinePanel
+              proposals={redlines}
+              approvalStatus={approvalStatus}
+              isOwner={currentUser && docOwnerId && currentUser.id === docOwnerId}
+              onDecision={handleRedlineDecision}
+              onApplyChanges={handleApplyRedlines}
+              onSelectProposal={(p) => setActiveProposalId(p.id)}
+              applying={applyingRedlines}
+            />
+          </div>
+        </div>
+      )}
 
       <ViewerToast
         message={toastMessage}

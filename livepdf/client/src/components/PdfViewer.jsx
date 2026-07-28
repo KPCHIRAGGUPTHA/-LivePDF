@@ -7,6 +7,7 @@ import DiffPanel from './DiffPanel';
 import useDiff from '../hooks/useDiff';
 import WatermarkOverlay from './WatermarkOverlay';
 import CommentOverlay from './CommentOverlay';
+import RedlineOverlay from './RedlineOverlay';
 import { useAuth } from '../context/AuthContext';
 
 // Import react-pdf styles for correct text-layer absolute positioning and overlay
@@ -29,9 +30,17 @@ export default function PdfViewer({
   showResolved = false,
   allowComments = true,
   currentUserId,
+  redlines = [],
+  activeProposalId,
+  onSelectProposal,
+  onAddRedlineProposal,
 }) {
   const [newCommentTarget, setNewCommentTarget] = useState(null); // { pageNumber, x, y }
   const [newCommentText, setNewCommentText] = useState('');
+  const [selectionTarget, setSelectionTarget] = useState(null); // { pageNumber, x, y, width, height, originalText }
+  const [replacementInputText, setReplacementInputText] = useState('');
+  const [showReplacementInput, setShowReplacementInput] = useState(false);
+
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
@@ -53,6 +62,40 @@ export default function PdfViewer({
   const pageAreaRef = useRef(null);
   const pageRefs = useRef({});
   const isFirstLoad = useRef(true);
+
+  const handleTextMouseUp = (pageNum) => {
+    if (!allowComments) return;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    const text = sel.toString().trim();
+    if (!text || text.length < 2) return;
+
+    try {
+      const range = sel.getRangeAt(0);
+      const rangeRect = range.getBoundingClientRect();
+      const pageEl = pageRefs.current[pageNum];
+      if (!pageEl) return;
+      const pageRect = pageEl.getBoundingClientRect();
+
+      const x = (rangeRect.left - pageRect.left) / scale;
+      const y = (rangeRect.top - pageRect.top) / scale;
+      const width = rangeRect.width / scale;
+      const height = rangeRect.height / scale;
+
+      setSelectionTarget({
+        pageNumber: pageNum,
+        x: Math.max(0, x),
+        y: Math.max(0, y),
+        width: Math.max(20, width),
+        height: Math.max(12, height),
+        originalText: text,
+      });
+      setReplacementInputText(text);
+      setShowReplacementInput(false);
+    } catch (err) {
+      console.error('Error handling text selection:', err);
+    }
+  };
 
   const {
     searchQuery,
@@ -231,8 +274,13 @@ export default function PdfViewer({
       >
         <div
           style={{ position: 'relative', display: 'inline-block', cursor: allowComments ? 'crosshair' : 'default' }}
+          onMouseUp={() => handleTextMouseUp(pageNum)}
           onClick={(e) => {
             if (!allowComments) return;
+            // Only set comment target if user clicked without selecting text
+            const sel = window.getSelection();
+            if (sel && !sel.isCollapsed && sel.toString().trim()) return;
+
             const rect = e.currentTarget.getBoundingClientRect();
             const clickX = (e.clientX - rect.left) / scale;
             const clickY = (e.clientY - rect.top) / scale;
@@ -271,6 +319,139 @@ export default function PdfViewer({
             currentUserId={currentUserId}
             showResolved={showResolved}
           />
+
+          {/* Phase 10.6 Redline Underlays/Overlays */}
+          <RedlineOverlay
+            pageNumber={pageNum}
+            proposals={redlines}
+            scale={scale}
+            activeProposalId={activeProposalId}
+            onSelectProposal={onSelectProposal}
+          />
+
+          {/* Text Selection Redline Action Popover */}
+          {selectionTarget && selectionTarget.pageNumber === pageNum && (
+            <div
+              style={{
+                position: 'absolute',
+                left: `${selectionTarget.x * scale}px`,
+                top: `${(selectionTarget.y + selectionTarget.height) * scale + 6}px`,
+                backgroundColor: '#ffffff',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '12px',
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
+                zIndex: 60,
+                width: '280px',
+                transform: 'translateX(-20%)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a' }}>✍️ Propose Redline</span>
+                <button
+                  onClick={() => setSelectionTarget(null)}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '12px', color: '#64748b' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ fontSize: '10px', color: '#64748b', backgroundColor: '#f1f5f9', padding: '6px', borderRadius: '4px', marginBottom: '8px', fontStyle: 'italic', wordBreak: 'break-word' }}>
+                "{selectionTarget.originalText}"
+              </div>
+
+              {!showReplacementInput ? (
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    onClick={() => {
+                      if (onAddRedlineProposal) {
+                        onAddRedlineProposal({
+                          ...selectionTarget,
+                          proposalType: 'deletion',
+                          proposedText: '',
+                        });
+                      }
+                      setSelectionTarget(null);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '6px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      backgroundColor: '#fff1f2',
+                      color: '#be123c',
+                      border: '1px solid #fca5a5',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✂️ Suggest Deletion
+                  </button>
+                  <button
+                    onClick={() => setShowReplacementInput(true)}
+                    style={{
+                      flex: 1,
+                      padding: '6px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      backgroundColor: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1px solid #93c5fd',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✏️ Suggest Replacement
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                    Proposed Replacement:
+                  </div>
+                  <textarea
+                    autoFocus
+                    rows={2}
+                    value={replacementInputText}
+                    onChange={(e) => setReplacementInputText(e.target.value)}
+                    style={{ width: '100%', padding: '6px', fontSize: '11px', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '6px' }}
+                  />
+
+                  {/* Text length diff warning notice */}
+                  {Math.abs(replacementInputText.length - selectionTarget.originalText.length) > 10 && (
+                    <div style={{ fontSize: '10px', color: '#b45309', backgroundColor: '#fef3c7', padding: '6px', borderRadius: '4px', marginBottom: '8px', lineHeight: 1.3 }}>
+                      ⚠️ Note: PDF text is at fixed coordinates. Significantly longer replacement text may overflow adjacent content.
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                    <button
+                      onClick={() => setShowReplacementInput(false)}
+                      style={{ padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (replacementInputText.trim() && onAddRedlineProposal) {
+                          onAddRedlineProposal({
+                            ...selectionTarget,
+                            proposalType: 'replacement',
+                            proposedText: replacementInputText.trim(),
+                          });
+                          setSelectionTarget(null);
+                        }
+                      }}
+                      style={{ padding: '4px 8px', fontSize: '11px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Submit Proposal
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Click to Add Comment Popover */}
           {newCommentTarget && newCommentTarget.pageNumber === pageNum && (
