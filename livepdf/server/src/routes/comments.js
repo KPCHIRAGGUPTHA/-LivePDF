@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router({ mergeParams: true });
 const commentsController = require('../controllers/commentsController');
 const auth = require('../middleware/auth');
-const optionalAuth = require('../middleware/optionalAuth'); // Middleware that decodes JWT if present but doesn't block guests
 
 // Optional auth helper middleware
 function softAuth(req, res, next) {
