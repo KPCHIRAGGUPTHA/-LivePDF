@@ -47,7 +47,19 @@ app.set('trust proxy', 1); // Trust first proxy (Nginx) for rate-limiting client
 app.use(helmet());
 
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow server-to-server or requests without origin header (e.g. mobile apps/curl)
+    if (!origin) return callback(null, true);
+    // Allow any duckdns.org subdomain, localhost, or configured CLIENT_URL
+    if (
+      origin.includes('duckdns.org') ||
+      origin.includes('localhost') ||
+      origin === process.env.CLIENT_URL
+    ) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Fallback allow for production flexibility
+  },
   credentials: true,
 }));
 

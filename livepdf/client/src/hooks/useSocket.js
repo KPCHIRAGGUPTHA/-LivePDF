@@ -25,7 +25,8 @@ export default function useSocket({ docId, linkType, currentVersion, onDocUpdate
 
     const token = window.__livepdf_token__;
 
-    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    const socket = io(socketUrl, {
       auth: { token: token || null },
       reconnection: true,
       reconnectionAttempts: Infinity,
