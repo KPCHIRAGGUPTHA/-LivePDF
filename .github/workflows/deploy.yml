@@ -68,8 +68,12 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu/livepdf
+            export DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
+            export API_IMAGE="${DOCKER_USERNAME:-kpchiragguptha}/livepdf-server:latest"
+            export CLIENT_IMAGE="${DOCKER_USERNAME:-kpchiragguptha}/livepdf-client:latest"
+            export PYTHON_IMAGE="${DOCKER_USERNAME:-kpchiragguptha}/livepdf-python:latest"
             docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --force-recreate
             pm2 restart livepdf-docker-stack || true
             # Wait for livepdf-api-prod to be fully running (up to 30s)
             for i in {1..10}; do
@@ -81,4 +85,3 @@ jobs:
               sleep 3
             done
             docker exec livepdf-api-prod node migrations/run_patches.js
-

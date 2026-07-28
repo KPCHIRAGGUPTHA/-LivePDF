@@ -6,11 +6,8 @@ services:
     container_name: livepdf-postgres-prod
     environment:
       POSTGRES_DB: livepdf
-      POSTGRES_USER_FILE: /run/secrets/db_user
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-    secrets:
-      - db_user
-      - db_password
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
       - pgdata-prod:/var/lib/postgresql/data
     restart: always
@@ -37,21 +34,17 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=livepdf
-      - DB_USER_FILE=/run/secrets/db_user
-      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - JWT_SECRET=${JWT_SECRET:-livepdf_production_fallback_jwt_secret_key_2026}
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET_FILE=/run/secrets/jwt_secret
-      - CLIENT_URL=${CLIENT_URL:-http://54.87.199.110}
+      - CLIENT_URL=${CLIENT_URL:-https://live-pdf.duckdns.org}
       - DIFF_SERVICE_URL=http://python-diff:8001
       - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
       - EMAIL_PORT=${EMAIL_PORT:-587}
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASS=${EMAIL_PASS}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
-    secrets:
-      - db_user
-      - db_password
-      - jwt_secret
     depends_on:
       - postgres
       - redis
@@ -70,17 +63,14 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=livepdf
-      - DB_USER_FILE=/run/secrets/db_user
-      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - REDIS_URL=redis://redis:6379
       - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
       - EMAIL_PORT=${EMAIL_PORT:-587}
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASS=${EMAIL_PASS}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
-    secrets:
-      - db_user
-      - db_password
     depends_on:
       - postgres
       - redis
@@ -118,14 +108,6 @@ volumes:
   pgdata-prod:
   redisdata-prod:
   uploads-data:
-
-secrets:
-  db_user:
-    file: ./secrets/db_user.txt
-  db_password:
-    file: ./secrets/db_password.txt
-  jwt_secret:
-    file: ./secrets/jwt_secret.txt
 
 networks:
   livepdf-network-prod:
