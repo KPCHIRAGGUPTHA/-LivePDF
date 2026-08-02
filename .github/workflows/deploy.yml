@@ -63,20 +63,26 @@ jobs:
       - name: Checkout for compose file
         uses: actions/checkout@v4
 
+      - name: Copy config files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "livepdf/docker-compose.prod.yml,livepdf/nginx.prod.conf"
+          target: "/home/ubuntu"
+          strip_components: 1
+
       - name: SSH to EC2 and Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST_IP }}
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # Increase timeout to 10 minutes to allow healthchecks to pass
           command_timeout: 10m
           script: |
             set -e
             cd /home/ubuntu/livepdf
-
-            echo "=== Pulling latest config from git ==="
-            git pull origin main || echo "git pull failed — continuing with existing files"
 
             RAW_USER="${{ secrets.DOCKER_USERNAME }}"
             LOWER_USER=$(echo "$RAW_USER" | tr '[:upper:]' '[:lower:]')
@@ -107,8 +113,6 @@ jobs:
             done
 
             echo "=== Running database migrations ==="
-            # Run migrations but don't fail the deployment if they error
-            # (idempotent patches should never bring down a running site)
             docker exec livepdf-api-prod node migrations/run_patches.js || {
               echo "WARNING: Migration had errors — check logs, but containers are still running."
               docker logs --tail=30 livepdf-api-prod
@@ -116,3 +120,4 @@ jobs:
 
             echo "=== Final container status ==="
             docker compose -f docker-compose.prod.yml ps
+
