@@ -60,19 +60,6 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout for compose file
-        uses: actions/checkout@v4
-
-      - name: Copy config files to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST_IP }}
-          username: ubuntu
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "livepdf/docker-compose.prod.yml,livepdf/nginx.prod.conf"
-          target: "/home/ubuntu"
-          strip_components: 1
-
       - name: SSH to EC2 and Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -83,6 +70,13 @@ jobs:
           script: |
             set -e
             cd /home/ubuntu/livepdf
+
+            echo "=== Downloading latest config files from GitHub ==="
+            wget -q -O docker-compose.prod.yml \
+              "https://raw.githubusercontent.com/KPCHIRAGGUPTHA/-LivePDF/main/livepdf/docker-compose.prod.yml"
+            wget -q -O nginx.prod.conf \
+              "https://raw.githubusercontent.com/KPCHIRAGGUPTHA/-LivePDF/main/livepdf/nginx.prod.conf"
+            echo "Config files updated."
 
             RAW_USER="${{ secrets.DOCKER_USERNAME }}"
             LOWER_USER=$(echo "$RAW_USER" | tr '[:upper:]' '[:lower:]')
@@ -120,4 +114,5 @@ jobs:
 
             echo "=== Final container status ==="
             docker compose -f docker-compose.prod.yml ps
+
 
