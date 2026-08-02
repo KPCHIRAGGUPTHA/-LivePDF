@@ -11,6 +11,12 @@ services:
     volumes:
       - pgdata-prod:/var/lib/postgresql/data
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d livepdf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - livepdf-network-prod
 
@@ -20,6 +26,12 @@ services:
     restart: always
     volumes:
       - redisdata-prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
       - livepdf-network-prod
 
@@ -46,9 +58,17 @@ services:
       - EMAIL_PASS=${EMAIL_PASS}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     networks:
       - livepdf-network-prod
     volumes:
@@ -72,8 +92,10 @@ services:
       - EMAIL_PASS=${EMAIL_PASS}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: always
     networks:
       - livepdf-network-prod
@@ -100,6 +122,9 @@ services:
     volumes:
       - ./nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      api:
+        condition: service_healthy
     restart: always
     networks:
       - livepdf-network-prod

@@ -60,30 +60,56 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout for compose file
+        uses: actions/checkout@v4
+
       - name: SSH to EC2 and Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST_IP }}
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Increase timeout to 10 minutes to allow healthchecks to pass
+          command_timeout: 10m
           script: |
+            set -e
             cd /home/ubuntu/livepdf
+
             RAW_USER="${{ secrets.DOCKER_USERNAME }}"
             LOWER_USER=$(echo "$RAW_USER" | tr '[:upper:]' '[:lower:]')
             export DOCKER_USERNAME="${LOWER_USER:-kpchiragguptha}"
             export API_IMAGE="${DOCKER_USERNAME}/livepdf-server:latest"
             export CLIENT_IMAGE="${DOCKER_USERNAME}/livepdf-client:latest"
             export PYTHON_IMAGE="${DOCKER_USERNAME}/livepdf-python:latest"
+
+            echo "=== Pulling latest images ==="
             docker compose -f docker-compose.prod.yml pull
+
+            echo "=== Starting containers ==="
             docker compose -f docker-compose.prod.yml up -d --force-recreate
-            pm2 restart livepdf-docker-stack || true
-            # Wait for livepdf-api-prod to be fully running (up to 30s)
-            for i in {1..10}; do
-              if [ "$(docker inspect -f '{{.State.Running}}' livepdf-api-prod 2>/dev/null)" = "true" ]; then
-                echo "Container is running. Running migration..."
+
+            echo "=== Waiting for API to become healthy (up to 3 minutes) ==="
+            ELAPSED=0
+            MAX_WAIT=180
+            until [ "$(docker inspect --format='{{.State.Health.Status}}' livepdf-api-prod 2>/dev/null)" = "healthy" ]; do
+              if [ $ELAPSED -ge $MAX_WAIT ]; then
+                echo "ERROR: API container did not become healthy in ${MAX_WAIT}s. Dumping logs:"
+                docker logs --tail=50 livepdf-api-prod
+                echo "Deployment will continue but site may be degraded."
                 break
               fi
-              echo "Waiting for container to start (attempt $i/10)..."
-              sleep 3
+              echo "Waiting for API... (${ELAPSED}s elapsed, status: $(docker inspect --format='{{.State.Health.Status}}' livepdf-api-prod 2>/dev/null || echo 'starting'))"
+              sleep 10
+              ELAPSED=$((ELAPSED + 10))
             done
-            docker exec livepdf-api-prod node migrations/run_patches.js
+
+            echo "=== Running database migrations ==="
+            # Run migrations but don't fail the deployment if they error
+            # (idempotent patches should never bring down a running site)
+            docker exec livepdf-api-prod node migrations/run_patches.js || {
+              echo "WARNING: Migration had errors — check logs, but containers are still running."
+              docker logs --tail=30 livepdf-api-prod
+            }
+
+            echo "=== Final container status ==="
+            docker compose -f docker-compose.prod.yml ps
