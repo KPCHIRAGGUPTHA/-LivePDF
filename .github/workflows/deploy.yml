@@ -75,6 +75,9 @@ jobs:
             set -e
             cd /home/ubuntu/livepdf
 
+            echo "=== Pulling latest config from git ==="
+            git pull origin main || echo "git pull failed — continuing with existing files"
+
             RAW_USER="${{ secrets.DOCKER_USERNAME }}"
             LOWER_USER=$(echo "$RAW_USER" | tr '[:upper:]' '[:lower:]')
             export DOCKER_USERNAME="${LOWER_USER:-kpchiragguptha}"
