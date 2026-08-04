@@ -1,13 +1,12 @@
 const s3 = require('../config/s3');
-const { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
-const { getSignedUrl: getAWSSignedUrl } = require('@aws-sdk/s3-request-presigner');
-const { emitDocUpdated } = require('../socket');
+const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../config/db');
 const { logAudit } = require('../utils/audit');
-const { emailQueue } = require('../services/queueService');
+const { getFileUrl } = require('../utils/fileUrl');
+const documentEventManager = require('../services/documentEventManager');
 
 
 // Helper to upload file to S3 (or write to disk in Mock Mode)
@@ -58,20 +57,6 @@ async function deleteFile(key) {
   await s3.send(command);
 }
 
-// Helper to generate signed url (or server relative url in Mock Mode)
-async function getFileUrl(key, req) {
-  if (s3.isMock) {
-    const protocol = req.protocol;
-    const host = req.get('host');
-    return `${protocol}://${host}/api/documents/mock-download/${key}`;
-  }
-  
-  const command = new GetObjectCommand({
-    Bucket: process.env.S3_BUCKET_NAME,
-    Key: key,
-  });
-  return await getAWSSignedUrl(s3, command, { expiresIn: 900 }); // 15 min
-}
 
 // ─── POST /documents/upload ──────────────────────────────────────────
 async function uploadDocument(req, res) {
@@ -141,29 +126,16 @@ async function uploadDocument(req, res) {
       dbClient.release();
     }
 
-    // Trigger embedding generation asynchronously
-    ;(async () => {
-      let parser;
-      try {
-        const { storeEmbeddings } = require('../services/embeddingService');
-        const { PDFParse } = require('pdf-parse');
-        
-        parser = new PDFParse({ data: req.file.buffer });
-        const result = await parser.getText();
-        const pageTexts = result.pages.map(p => ({
-          pageNumber: p.num - 1, // convert 1-indexed to 0-indexed
-          text: p.text.trim(),
-        })).filter(p => p.text.length > 0);
-
-        await storeEmbeddings(docId, versionId, pageTexts);
-      } catch (err) {
-        console.error('Embedding generation failed for document upload:', err.message);
-      } finally {
-        if (parser) {
-          try { await parser.destroy(); } catch (e) {}
-        }
-      }
-    })();
+    // Emit update event to kick off async tasks (embeddings, etc.)
+    documentEventManager.emit('document:updated', {
+      req,
+      userId: req.user.id,
+      docId,
+      versionId,
+      s3Key,
+      nextVersion: 1,
+      fileBuffer: req.file.buffer
+    });
 
     res.status(201).json({
       documentId: docId,
@@ -240,19 +212,6 @@ async function uploadNewVersion(req, res) {
       );
 
       await dbClient.query('COMMIT');
-      logAudit(req, docId, 'upload', { versionNumber: nextVersion }).catch(console.error);
-      
-      // Enqueue background email alerts job
-      emailQueue.add('sendEmailAlerts', {
-        documentId: docId,
-        versionNumber: nextVersion,
-        newVersionId: versionId,
-        ownerId: req.user.id
-      }).then(job => {
-        console.log(`Enqueued email alerts job ${job.id} for doc ${docId} version ${nextVersion}`);
-      }).catch(err => {
-        console.error('Failed to enqueue email alerts job:', err.message);
-      });
     } catch (dbErr) {
       await dbClient.query('ROLLBACK');
       try { await deleteFile(s3Key); } catch (s3Err) { console.error('S3 Cleanup error:', s3Err); }
@@ -261,61 +220,16 @@ async function uploadNewVersion(req, res) {
       dbClient.release();
     }
 
-    // Generate fresh signed URL and notify all open viewers
-    try {
-      const freshSignedUrl = await getFileUrl(s3Key, req);
-      emitDocUpdated(docId, {
-        versionNumber: nextVersion,
-        signedUrl: freshSignedUrl,
-        updatedAt: new Date().toISOString(),
-      });
-    } catch (emitErr) {
-      console.error('Error emitting doc update:', emitErr);
-    }
-
-    // Fetch the previous version's S3 key for the diff
-    try {
-      const prevVersionResult = await pool.query(
-        `SELECT id, s3_key FROM versions
-         WHERE document_id = $1 AND version_number = $2`,
-        [docId, nextVersion - 1]
-      );
-
-      if (prevVersionResult.rows.length > 0) {
-        const oldVersion = prevVersionResult.rows[0];
-        const newVersion = { id: versionId, s3_key: s3Key };
-
-        // Run diff asynchronously — do NOT await
-        const { computeAndStoreDiff } = require('../services/diffService');
-        computeAndStoreDiff(docId, oldVersion, newVersion).catch(console.error);
-      }
-    } catch (diffTriggerErr) {
-      console.error('Failed to trigger diff service:', diffTriggerErr);
-    }
-
-    // Trigger embedding generation asynchronously
-    ;(async () => {
-      let parser;
-      try {
-        const { storeEmbeddings } = require('../services/embeddingService');
-        const { PDFParse } = require('pdf-parse');
-        
-        parser = new PDFParse({ data: req.file.buffer });
-        const result = await parser.getText();
-        const pageTexts = result.pages.map(p => ({
-          pageNumber: p.num - 1, // convert 1-indexed to 0-indexed
-          text: p.text.trim(),
-        })).filter(p => p.text.length > 0);
-
-        await storeEmbeddings(docId, versionId, pageTexts);
-      } catch (err) {
-        console.error('Embedding generation failed for version upload:', err.message);
-      } finally {
-        if (parser) {
-          try { await parser.destroy(); } catch (e) {}
-        }
-      }
-    })();
+    // Emit event to observers to run async upload side-effects
+    documentEventManager.emit('document:updated', {
+      req,
+      userId: req.user.id,
+      docId,
+      versionId,
+      s3Key,
+      nextVersion,
+      fileBuffer: req.file.buffer
+    });
 
     res.json({
       versionNumber: nextVersion,

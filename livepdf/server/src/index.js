@@ -1,6 +1,9 @@
 require('dotenv').config();
 const Sentry = require('@sentry/node');
 
+// Register document event observers
+require('./services/observers/documentObservers');
+
 // ─── Sentry Initialization ─────────────────────────────────────
 if (process.env.SENTRY_DSN) {
   Sentry.init({
@@ -21,7 +24,6 @@ const fs = require('fs');
     }
   }
 });
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'livepdf_production_fallback_jwt_secret_key_2026';
 
 const http = require('http');
 const express = require('express');
@@ -48,19 +50,7 @@ app.set('trust proxy', 1); // Trust first proxy (Nginx) for rate-limiting client
 app.use(helmet());
 
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow server-to-server or requests without origin header (e.g. mobile apps/curl)
-    if (!origin) return callback(null, true);
-    // Allow any duckdns.org subdomain, localhost, or configured CLIENT_URL
-    if (
-      origin.includes('duckdns.org') ||
-      origin.includes('localhost') ||
-      origin === process.env.CLIENT_URL
-    ) {
-      return callback(null, true);
-    }
-    return callback(null, true); // Fallback allow for production flexibility
-  },
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true,
 }));
 
@@ -111,13 +101,10 @@ const notificationRoutes = require('./routes/notifications');
 app.use('/api/notifications', notificationRoutes);
 
 const commentRoutes = require('./routes/comments');
-app.use('/api/documents/:docId/comments', commentRoutes);
-
-const redlineRoutes = require('./routes/redlines');
-app.use('/api/documents/:docId/redlines', redlineRoutes);
+app.use('/api/comments', commentRoutes);
 
 const approvalRoutes = require('./routes/approvals');
-app.use('/api/documents/:docId/approval', approvalRoutes);
+app.use('/api/approvals', approvalRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -151,4 +138,3 @@ httpServer.listen(PORT, () => {
 });
 
 module.exports = { app, httpServer };
-
