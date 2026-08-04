@@ -151,10 +151,13 @@ def create_pdf(filename="design_patterns_report.pdf"):
     story.append(Paragraph("Class Diagram Representation:", h2_style))
     story.append(Preformatted(diagram_factory, code_style))
     
-    story.append(Paragraph("Implementation File Path:", h2_style))
-    story.append(Paragraph("<code>server/src/services/ai/AIEngineFactory.js</code>", body_style))
+    story.append(Paragraph("Implementation File Path: <code>server/src/services/ai/AIEngineFactory.js</code> (Lines 1-25)", h2_style))
     
-    code_factory = """class AIEngineFactory {
+    code_factory = """const GeminiAIEngine = require('./GeminiAIEngine');
+const MockAIEngine = require('./MockAIEngine');
+const CachingAIEngineDecorator = require('./CachingAIEngineDecorator');
+
+class AIEngineFactory {
   static getEngine() {
     const apiKey = process.env.GEMINI_API_KEY;
     const isMockMode = !apiKey || apiKey.startsWith('your_');
@@ -165,10 +168,31 @@ def create_pdf(filename="design_patterns_report.pdf"):
     } else {
       baseEngine = new GeminiAIEngine();
     }
+
+    // Wrap in the CachingDecorator to transparently cache results
     return new CachingAIEngineDecorator(baseEngine);
   }
-}"""
+}
+
+module.exports = AIEngineFactory;"""
     story.append(Preformatted(code_factory, code_style))
+    
+    story.append(Paragraph("Interface Delegator File: <code>server/src/services/aiService.js</code> (Lines 1-20)", h2_style))
+    code_ai_service = """const AIEngineFactory = require('./ai/AIEngineFactory');
+
+// Create the unified, decorated AI engine instance using the Factory Method
+const aiEngine = AIEngineFactory.getEngine();
+
+async function generateChangeSummary(versionDiffId, changes, documentTitle) {
+  return aiEngine.generateChangeSummary(versionDiffId, changes, documentTitle);
+}
+
+async function classifyChanges(changes) {
+  return aiEngine.classifyChanges(changes);
+}
+
+module.exports = { generateChangeSummary, classifyChanges };"""
+    story.append(Preformatted(code_ai_service, code_style))
     story.append(PageBreak())
 
     # 2.2 Decorator Pattern
@@ -194,24 +218,41 @@ def create_pdf(filename="design_patterns_report.pdf"):
     story.append(Paragraph("Decorator Pipeline Diagram:", h2_style))
     story.append(Preformatted(diagram_decorator, code_style))
     
-    story.append(Paragraph("Implementation File Path:", h2_style))
-    story.append(Paragraph("<code>server/src/services/ai/CachingAIEngineDecorator.js</code>", body_style))
+    story.append(Paragraph("Implementation File Path: <code>server/src/services/ai/CachingAIEngineDecorator.js</code> (Lines 13-64)", h2_style))
     
-    code_decorator = """class CachingAIEngineDecorator extends AIEngine {
-  constructor(baseEngine) {
-    super();
-    this.baseEngine = baseEngine;
-  }
+    code_decorator = """  async generateChangeSummary(versionDiffId, changes, documentTitle) {
+    // 1. Check PostgreSQL database cache first
+    try {
+      const cached = await pool.query(
+        'SELECT summary_text FROM ai_summaries WHERE version_diff_id = $1',
+        [versionDiffId]
+      );
+      if (cached.rows.length > 0) {
+        return cached.rows[0].summary_text;
+      }
+    } catch (dbErr) {
+      console.error('[Cache Error] Cache lookup failed:', dbErr.message);
+    }
 
-  async generateChangeSummary(versionDiffId, changes, documentTitle) {
-    const cached = await pool.query('SELECT summary_text FROM ai_summaries WHERE...');
-    if (cached.rows.length > 0) return cached.rows[0].summary_text;
-
+    // 2. Cache miss: Delegate to underlying base engine
     const result = await this.baseEngine.generateChangeSummary(versionDiffId, changes, documentTitle);
-    await pool.query('INSERT INTO ai_summaries...');
-    return result.text;
-  }
-}"""
+
+    let summaryText = result.text || result;
+
+    // 3. Cache the summary result in PostgreSQL for future requests
+    if (summaryText && !summaryText.startsWith('Error:')) {
+      try {
+        await pool.query(
+          `INSERT INTO ai_summaries (version_diff_id, summary_text, model_used, prompt_tokens, completion_tokens)
+           VALUES ($1, $2, $3, $4, $5) ON CONFLICT (version_diff_id) DO NOTHING`,
+          [versionDiffId, summaryText, MODEL, result.promptTokens, result.completionTokens]
+        );
+      } catch (dbErr) {
+        console.error('[Cache Error] Failed to write cache:', dbErr.message);
+      }
+    }
+    return summaryText;
+  }"""
     story.append(Preformatted(code_decorator, code_style))
     story.append(PageBreak())
 
@@ -243,48 +284,112 @@ def create_pdf(filename="design_patterns_report.pdf"):
     story.append(Paragraph("Event-Driven Observer Diagram:", h2_style))
     story.append(Preformatted(diagram_observer, code_style))
     
-    story.append(Paragraph("Implementation Code: Event Emission (Publisher)", h2_style))
-    story.append(Paragraph("<code>server/src/controllers/documentController.js</code>", body_style))
-    code_obs_pub = """// Inside uploadNewVersion controller
-await dbClient.query('COMMIT');
+    story.append(Paragraph("Event-Broker File Path: <code>server/src/services/documentEventManager.js</code> (Lines 1-13)", h2_style))
+    code_obs_manager = """const EventEmitter = require('events');
 
-documentEventManager.emit('document:updated', {
-  req,
-  userId: req.user.id,
-  docId,
-  versionId,
-  s3Key,
-  nextVersion,
-  fileBuffer: req.file.buffer
-});"""
+class DocumentEventManager extends EventEmitter {
+  constructor() {
+    super();
+    this.setMaxListeners(20);
+  }
+}
+
+const documentEventManager = new DocumentEventManager();
+module.exports = documentEventManager;"""
+    story.append(Preformatted(code_obs_manager, code_style))
+    
+    story.append(Paragraph("Publisher File Path: <code>server/src/controllers/documentController.js</code> (Lines 223-232)", h2_style))
+    code_obs_pub = """    // Emit event to observers to run async upload side-effects
+    documentEventManager.emit('document:updated', {
+      req,
+      userId: req.user.id,
+      docId,
+      versionId,
+      s3Key,
+      nextVersion,
+      fileBuffer: req.file.buffer
+    });"""
     story.append(Preformatted(code_obs_pub, code_style))
 
-    story.append(Paragraph("Implementation Code: Event Listeners (Observers)", h2_style))
-    story.append(Paragraph("<code>server/src/services/observers/documentObservers.js</code>", body_style))
-    code_obs_sub = """// Registering Email Alerts Observer
+    story.append(Paragraph("Observer Registry File Path: <code>server/src/services/observers/documentObservers.js</code> (Lines 1-32)", h2_style))
+    code_obs_sub = """const documentEventManager = require('../documentEventManager');
+const { logAudit } = require('../../utils/audit');
+const { emailQueue } = require('../queueService');
+const { emitDocUpdated } = require('../../socket');
+const { getFileUrl } = require('../../utils/fileUrl');
+const pool = require('../../config/db');
+
+// 1. Audit Log Observer - Records audit trail entries
 documentEventManager.on('document:updated', async (data) => {
-  const { docId, nextVersion, versionId, userId } = data;
-  if (nextVersion <= 1) return;
-  await emailQueue.add('sendEmailAlerts', { documentId: docId, ... });
+  const { req, docId, nextVersion } = data;
+  try {
+    await logAudit(req, docId, 'upload', { versionNumber: nextVersion });
+    console.log(`[Observer] AuditLogObserver: Logged upload for doc ${docId}`);
+  } catch (err) {
+    console.error('[Observer Error] AuditLogObserver failed:', err.message);
+  }
 });
 
-// Registering S3 Vector Embedding Observer
+// 2. Email Alerts Observer - Enqueues background email notifications job
 documentEventManager.on('document:updated', async (data) => {
-  const { docId, versionId, fileBuffer } = data;
-  const parser = new PDFParse({ data: fileBuffer });
-  const result = await parser.getText();
-  await storeEmbeddings(docId, versionId, result.pages...);
+  const { docId, nextVersion, versionId, userId } = data;
+  if (nextVersion <= 1) return; // Only notify for new version updates
+  try {
+    const job = await emailQueue.add('sendEmailAlerts', {
+      documentId: docId,
+      versionNumber: nextVersion,
+      newVersionId: versionId,
+      ownerId: userId
+    });
+    console.log(`[Observer] EmailAlertsObserver: Enqueued alerts job ${job.id}`);
+  } catch (err) {
+    console.error('[Observer Error] EmailAlertsObserver failed:', err.message);
+  }
 });"""
     story.append(Preformatted(code_obs_sub, code_style))
-    story.append(Spacer(1, 10))
+    story.append(PageBreak())
 
-    # Verification section
-    story.append(Paragraph("Conclusion & Reference Verification", h1_style))
+    # Section 3: References
+    story.append(Paragraph("References", h1_style))
+    
+    ref_body_style = ParagraphStyle(
+        name='RefBodyStyle',
+        parent=body_style,
+        leftIndent=20,
+        firstLineIndent=-20,
+        spaceAfter=12
+    )
+
     story.append(Paragraph(
-        "All refactored patterns were compiled and syntax-verified locally using <code>node --check</code>. "
-        "The structural refactoring maintains 100% backward-compatibility for LivePDF. API endpoints behave exactly as before, "
-        "but the code architecture is clean, decoupled, and optimized for resource handling.",
-        body_style
+        "Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994). "
+        "<i>Design Patterns: Elements of Reusable Object-Oriented Software</i>. Addison-Wesley.<br/>"
+        "<b>Context:</b> The canonical reference defining the formal structures, classes, and roles "
+        "for the Factory Method, Decorator, and Observer design patterns.",
+        ref_body_style
+    ))
+    
+    story.append(Paragraph(
+        "Freeman, E., Robson, E., Sierra, K., & Bates, B. (2020). "
+        "<i>Head First Design Patterns: Building Extensible and Maintainable Object-Oriented Software</i> (2nd ed.). O'Reilly Media.<br/>"
+        "<b>Context:</b> Architectural guides explaining dynamic behavior composition (Decorator) "
+        "and runtime coupling reduction (Observer).",
+        ref_body_style
+    ))
+    
+    story.append(Paragraph(
+        "Casciaro, M., & Mammino, L. (2020). "
+        "<i>Node.js Design Patterns: Design and implement production-grade Node.js applications using design patterns</i> (3rd ed.). Packt Publishing.<br/>"
+        "<b>Context:</b> Demonstrates integration of the Observer pattern using standard Node.js "
+        "<code>EventEmitter</code> instances, matching our event broker implementation.",
+        ref_body_style
+    ))
+
+    story.append(Paragraph(
+        "Shvets, A. (2021). <i>Design Patterns: Creational, Structural, and Behavioral</i>. Refactoring.Guru. "
+        "<font color='#0066cc'><u>https://refactoring.guru/design-patterns/</u></font><br/>"
+        "<b>Context:</b> Code structure definitions and trade-off guides mapping GoF patterns "
+        "to JavaScript runtime structures.",
+        ref_body_style
     ))
 
     doc.build(story)
