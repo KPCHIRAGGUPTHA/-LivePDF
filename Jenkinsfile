@@ -35,7 +35,7 @@ pipeline {
                     } else {
                         dir('livepdf/server') {
                             bat 'call npm ci'
-                            bat 'call npm test || echo Server tests completed'
+                            bat 'call npm test'
                         }
                         dir('livepdf/client') {
                             bat 'call npm ci'
@@ -78,7 +78,7 @@ pipeline {
                             sh "docker push ${CLIENT_IMAGE}"
                             sh "docker push ${PYTHON_IMAGE}"
                         } else {
-                            bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
+                            bat "echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin"
                             bat "docker push ${SERVER_IMAGE}"
                             bat "docker push ${CLIENT_IMAGE}"
                             bat "docker push ${PYTHON_IMAGE}"
