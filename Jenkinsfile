@@ -58,9 +58,9 @@ pipeline {
                         }
                     } else {
                         dir('livepdf') {
-                            bat "docker build -t ${SERVER_IMAGE} ./server"
-                            bat "docker build -t ${CLIENT_IMAGE} ./client"
-                            bat "docker build -t ${PYTHON_IMAGE} ./python"
+                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker build -t ' + SERVER_IMAGE + ' ./server'
+                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker build -t ' + CLIENT_IMAGE + ' ./client'
+                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker build -t ' + PYTHON_IMAGE + ' ./python'
                         }
                     }
                 }
@@ -78,10 +78,10 @@ pipeline {
                             sh "docker push ${CLIENT_IMAGE}"
                             sh "docker push ${PYTHON_IMAGE}"
                         } else {
-                            bat "echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin"
-                            bat "docker push ${SERVER_IMAGE}"
-                            bat "docker push ${CLIENT_IMAGE}"
-                            bat "docker push ${PYTHON_IMAGE}"
+                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + SERVER_IMAGE
+                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + CLIENT_IMAGE
+                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + PYTHON_IMAGE
                         }
                     }
                 }
