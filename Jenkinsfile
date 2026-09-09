@@ -97,6 +97,7 @@ pipeline {
                     script {
                         if (isUnix()) {
                             sh '''
+                                chmod 600 ${SSH_KEY}
                                 ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${EC2_HOST_IP} "
                                     set -e
                                     cd /home/ubuntu/livepdf
@@ -106,6 +107,7 @@ pipeline {
                             '''
                         } else {
                             bat '''
+                                icacls "%SSH_KEY%" /inheritance:r /grant:r "%USERNAME%:F"
                                 ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@%EC2_HOST_IP% "cd /home/ubuntu/livepdf && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d --force-recreate"
                             '''
                         }
