@@ -93,11 +93,11 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo '=== Stage 5: Deploying to EC2 production server ==='
-                sshagent(credentials: ["${EC2_SSH_CREDENTIALS}"]) {
+                withCredentials([sshUserPrivateKey(credentialsId: "${EC2_SSH_CREDENTIALS}", keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
                     script {
                         if (isUnix()) {
                             sh '''
-                                ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST_IP} "
+                                ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${EC2_HOST_IP} "
                                     set -e
                                     cd /home/ubuntu/livepdf
                                     docker compose -f docker-compose.prod.yml pull
@@ -106,7 +106,7 @@ pipeline {
                             '''
                         } else {
                             bat '''
-                                ssh -o StrictHostKeyChecking=no ubuntu@%EC2_HOST_IP% "cd /home/ubuntu/livepdf && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d --force-recreate"
+                                ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@%EC2_HOST_IP% "cd /home/ubuntu/livepdf && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d --force-recreate"
                             '''
                         }
                     }
