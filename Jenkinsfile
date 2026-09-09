@@ -78,7 +78,7 @@ pipeline {
                             sh "docker push ${CLIENT_IMAGE}"
                             sh "docker push ${PYTHON_IMAGE}"
                         } else {
-                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && echo %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin'
                             bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + SERVER_IMAGE
                             bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + CLIENT_IMAGE
                             bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + PYTHON_IMAGE
