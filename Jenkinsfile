@@ -70,18 +70,20 @@ pipeline {
         stage('Push Docker Images') {
             steps {
                 echo '=== Stage 4: Pushing Docker images to Docker Hub ==='
-                script {
-                    withCredentials([usernamePassword(credentialsId: "${DOCKER_REGISTRY_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        if (isUnix()) {
-                            sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
-                            sh "docker push ${SERVER_IMAGE}"
-                            sh "docker push ${CLIENT_IMAGE}"
-                            sh "docker push ${PYTHON_IMAGE}"
-                        } else {
-                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && echo %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin'
-                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + SERVER_IMAGE
-                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + CLIENT_IMAGE
-                            bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + PYTHON_IMAGE
+                retry(3) {
+                    script {
+                        withCredentials([usernamePassword(credentialsId: "${DOCKER_REGISTRY_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            if (isUnix()) {
+                                sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+                                sh "docker push ${SERVER_IMAGE}"
+                                sh "docker push ${CLIENT_IMAGE}"
+                                sh "docker push ${PYTHON_IMAGE}"
+                            } else {
+                                bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && echo %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin'
+                                bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + SERVER_IMAGE
+                                bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + CLIENT_IMAGE
+                                bat 'set PATH=%LOCALAPPDATA%\\Programs\\DockerDesktop\\resources\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;%PATH% && docker push ' + PYTHON_IMAGE
+                            }
                         }
                     }
                 }
