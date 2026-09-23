@@ -22,6 +22,10 @@ server/uploads/
 .vscode/
 .idea/
 
+# Maven build output and wrapper binaries
+**/target/
+.mvn/
+
 # Operating System files
 .DS_Store
 Thumbs.db

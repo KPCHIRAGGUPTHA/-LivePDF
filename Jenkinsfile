@@ -19,9 +19,26 @@ pipeline {
             }
         }
 
+        stage('Maven CI Test') {
+            steps {
+                echo '=== Stage 2: Running Maven JUnit tests for LivePDF CI ==='
+                script {
+                    if (isUnix()) {
+                        dir('maven-ci') {
+                            sh 'mvn clean test'
+                        }
+                    } else {
+                        dir('maven-ci') {
+                            bat 'mvn clean test'
+                        }
+                    }
+                }
+            }
+        }
+
         stage('Test & Audit') {
             steps {
-                echo '=== Stage 2: Running backend and client tests ==='
+                echo '=== Stage 3: Running backend and client tests ==='
                 script {
                     if (isUnix()) {
                         dir('livepdf/server') {
@@ -48,7 +65,7 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                echo '=== Stage 3: Building Docker images for LivePDF services ==='
+                echo '=== Stage 4: Building Docker images for LivePDF services ==='
                 script {
                     if (isUnix()) {
                         dir('livepdf') {
@@ -69,7 +86,7 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-                echo '=== Stage 4: Pushing Docker images to Docker Hub ==='
+                echo '=== Stage 5: Pushing Docker images to Docker Hub ==='
                 retry(3) {
                     script {
                         withCredentials([usernamePassword(credentialsId: "${DOCKER_REGISTRY_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -92,7 +109,7 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                echo '=== Stage 5: Deploying to EC2 production server ==='
+                echo '=== Stage 6: Deploying to EC2 production server ==='
                 withCredentials([sshUserPrivateKey(credentialsId: "${EC2_SSH_CREDENTIALS}", keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
                     script {
                         if (isUnix()) {

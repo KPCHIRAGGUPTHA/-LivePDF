@@ -108,7 +108,26 @@ If running Jenkins on Windows locally (as described in your PDF tutorial), you c
 
 ---
 
+## Maven CI Assessment
+
+This repository includes a dedicated Maven + Java + JUnit 4 assessment module to satisfy college Jenkins CI requirements while preserving the existing LivePDF architecture (Node.js backend, React frontend, and Python microservice).
+
+1. **Maven Module Location**: `maven-ci/`
+2. **Maven Project File**: `maven-ci/pom.xml` (`groupId`: `com.livepdf`, `artifactId`: `livepdf-maven-ci`, `version`: `1.0-SNAPSHOT`, JDK 21 compatibility, JUnit 4.13.2)
+3. **Local Test Command**:
+   ```bash
+   cd maven-ci
+   mvn clean test
+   ```
+4. **Jenkins Stage Name**: `Maven CI Test` (runs right after `Checkout SCM` and before `Test & Audit` / Docker stages)
+5. **Expected Result**: `BUILD SUCCESS` (all JUnit tests pass)
+
+> **Note**: The `maven-ci` module is a CI assessment component and does not replace or modify the existing Node.js backend, React client, or Python services in `livepdf/`.
+
+---
+
 ## Verification
 
 - When code is pushed to `main`, Jenkins will trigger the pipeline automatically.
 - Check the **Console Output** of any build stage to verify logs.
+
